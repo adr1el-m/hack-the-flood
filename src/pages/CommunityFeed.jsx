@@ -4,6 +4,7 @@ import { getFirestore, collection, query, where, orderBy, onSnapshot, doc, runTr
 import { firebaseApp } from '../firebase';
 import { useAuth } from '../AuthContext';
 import { useLanguage } from '../LanguageContext';
+import ParallaxBackground from '../components/ParallaxBackground';
 
 export default function CommunityFeed() {
   const [items, setItems] = useState([]);
@@ -307,8 +308,9 @@ export default function CommunityFeed() {
   ));
 
   return (
-    <div className="min-h-screen">
-      <div className="max-w-2xl mx-auto px-4 py-6">
+    <div className="min-h-screen relative overflow-hidden">
+      <ParallaxBackground />
+      <div className="max-w-2xl mx-auto px-4 py-6 relative z-10">
         {loading && (
           <div className="flex items-center justify-center py-8">
             <div className="w-10 h-10 border-4 border-slate-200 border-t-gov-blue rounded-full animate-spin"></div>
