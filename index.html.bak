@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SubaybayPH | BetterGov PH</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'gov-blue': '#1e3a8a', // Dark Royal Blue
+                        'gov-blue-light': '#3b82f6',
+                        'gov-accent': '#f59e0b', // Amber/Gold
+                        'gov-bg': '#f8fafc', // Slate 50
+                        'gov-text': '#1e293b', // Slate 800
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+        .modern-card {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+            border: 1px solid #e2e8f0;
+        }
+        .btn-primary {
+            background: #1e3a8a;
+            color: white;
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px -1px rgba(30, 58, 138, 0.2);
+        }
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+        .btn-accent {
+            background: #f59e0b;
+            color: white;
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+        }
+        canvas {
+            touch-action: none;
+        }
+        /* FAB Animation */
+        .fab-btn {
+            box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.3);
+        }
+        .fab-btn:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden bg-gov-bg">
+
+    <!-- Navbar -->
+    <nav class="bg-white border-b border-slate-200 px-4 py-3 flex justify-between items-center z-20 shadow-sm">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 bg-gov-blue rounded-lg flex items-center justify-center text-white">
+                <i class="fa-solid fa-landmark"></i>
+            </div>
+            <div>
+                <h1 class="text-sm font-bold text-gov-blue leading-tight">SubaybayPH</h1>
+                <p class="text-[10px] text-slate-500 uppercase tracking-wider">BetterGov PH</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <button id="lang-toggle" class="text-xs font-bold text-slate-500 border border-slate-300 px-2 py-1 rounded hover:bg-slate-100 transition-colors">
+                EN | <span class="text-gov-blue">TL</span>
+            </button>
+            <div id="status-indicator" class="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-700">
+                <div class="w-2 h-2 rounded-full bg-green-500"></div>
+                Online
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto relative">
+        
+        <!-- HOME VIEW -->
+        <div id="view-home" class="h-full flex flex-col p-4 max-w-md mx-auto">
+            
+            <!-- Hero Section -->
+            <div class="mb-6 mt-2">
+                <h2 data-i18n="hello" class="text-2xl font-bold text-slate-800">Kumusta, Kababayan.</h2>
+                <p data-i18n="tagline" class="text-slate-500 text-sm">Tulungan kaming bumuo ng mas mabuting bansa sa pamamagitan ng ligtas na pag-uulat ng mga hindi tapos na proyekto.</p>
+            </div>
+
+            <!-- Stats / Queue Card -->
+            <div class="modern-card p-5 mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 data-i18n="pending_reports" class="font-semibold text-slate-700">Mga Nakabinbing Ulat</h3>
+                    <span id="queue-count" class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-0.5 rounded-full">0</span>
+                </div>
+                
+                <div id="reports-list" class="space-y-3 min-h-[100px] max-h-[300px] overflow-y-auto">
+                    <!-- Empty State -->
+                    <div id="empty-state" class="flex flex-col items-center justify-center py-8 text-slate-400">
+                        <i class="fa-solid fa-folder-open text-3xl mb-2 opacity-50"></i>
+                        <p data-i18n="no_pending" class="text-sm">Walang nakabinbing ulat</p>
+                    </div>
+                </div>
+
+                <!-- Sync Button -->
+                <button id="btn-sync" class="hidden mt-4 w-full py-3 bg-slate-800 text-white rounded-lg font-medium text-sm flex items-center justify-center gap-2 hover:bg-slate-900 transition-colors">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> <span data-i18n="upload_securely">I-upload nang Ligtas</span>
+                </button>
+            </div>
+
+            <!-- Transparency Board Button -->
+            <button id="btn-transparency" class="w-full mb-6 py-4 bg-white border border-slate-200 rounded-xl shadow-sm flex items-center justify-between px-5 hover:bg-slate-50 transition-colors group">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-chart-line"></i>
+                    </div>
+                    <div class="text-left">
+                        <h3 class="font-bold text-slate-800 text-sm" data-i18n="transparency_title">Flood Control Tracker</h3>
+                        <p class="text-xs text-slate-500" data-i18n="transparency_desc">Monitor government projects</p>
+                    </div>
+                </div>
+                <i class="fa-solid fa-chevron-right text-slate-300"></i>
+            </button>
+
+            <!-- Information Card -->
+            <div class="modern-card p-4 bg-blue-50 border-blue-100">
+                <div class="flex gap-3">
+                    <div class="text-blue-600 mt-1"><i class="fa-solid fa-shield-halved"></i></div>
+                    <div>
+                        <h4 data-i18n="privacy_first" class="font-semibold text-sm text-blue-900">Pagkapribado Una</h4>
+                        <p data-i18n="privacy_desc" class="text-xs text-blue-700 mt-1">Ang lahat ng larawan ay tinatanggalan ng metadata. Maaari mong labuin ang mga mukha bago i-save.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Floating Action Button -->
+            <div class="fixed bottom-6 right-6 z-10">
+                <button id="btn-start-report" class="fab-btn w-14 h-14 bg-gov-blue rounded-full text-white text-xl flex items-center justify-center shadow-lg hover:bg-blue-800 transition-colors">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- REPORT VIEW (Full Screen Modal) -->
+        <div id="view-report" class="hidden fixed inset-0 bg-white z-30 flex flex-col">
+            <!-- Header -->
+            <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-white">
+                <button id="btn-cancel" data-i18n="cancel" class="text-slate-500 hover:text-slate-800 text-sm font-medium px-2 py-1">
+                    Kanselahin
+                </button>
+                <h2 data-i18n="new_report" class="font-semibold text-slate-800">Bagong Ulat</h2>
+                <button id="btn-save-report" data-i18n="save" class="hidden text-gov-blue font-bold text-sm px-2 py-1">
+                    I-save
+                </button>
+            </div>
+
+            <!-- Scrollable Content Area -->
+            <div class="flex-1 overflow-y-auto bg-slate-50 p-4">
+                
+                <!-- Camera/Canvas Container -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-4 relative flex flex-col items-center justify-center min-h-[300px]">
+                    
+                    <div id="camera-placeholder" class="text-center p-8 max-w-xs w-full">
+                        <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-500">
+                            <i class="fa-solid fa-camera text-2xl"></i>
+                        </div>
+                        <h3 data-i18n="take_evidence" class="font-bold text-slate-800 mb-1">Kumuha ng Litrato</h3>
+                        <p data-i18n="take_evidence_desc" class="text-xs text-slate-500 mb-6">Kunan ang hindi tapos na imprastraktura. Siguraduhing maliwanag.</p>
+                        
+                        <button id="btn-take-photo" class="w-full btn-primary py-3 font-medium text-sm flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-camera"></i> <span data-i18n="open_camera">Buksan ang Kamera</span>
+                        </button>
+                    </div>
+
+                    <canvas id="editor-canvas" class="hidden w-full object-contain bg-black"></canvas>
+
+                    <!-- Floating Tooltip for Blur -->
+                    <div id="editor-controls" class="hidden absolute top-4 left-1/2 transform -translate-x-1/2 bg-black/70 backdrop-blur-sm text-white px-4 py-2 rounded-full text-xs font-medium flex items-center gap-2 shadow-lg whitespace-nowrap pointer-events-none">
+                        <i class="fa-regular fa-hand-pointer"></i> <span data-i18n="blur_tooltip">Pindutin o i-drag upang labuin</span>
+                    </div>
+                </div>
+
+                <!-- Sentiment Input (Hidden until photo taken) -->
+                <div id="sentiment-container" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-20">
+                    <label class="block text-sm font-semibold text-slate-700 mb-2" data-i18n="sentiment_label">
+                        Karagdagang Detalye (Opsyonal)
+                    </label>
+                    <textarea 
+                        id="sentiment-input" 
+                        rows="4" 
+                        class="w-full p-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+                        placeholder="Ilarawan ang iyong nakikita o ang iyong nararamdaman tungkol dito..."
+                    ></textarea>
+                </div>
+
+            </div>
+
+            <!-- Bottom Actions (Fixed) -->
+            <div id="action-bar" class="p-4 bg-white border-t border-slate-100 hidden">
+                 <button id="btn-retake" data-i18n="retake" class="w-full py-3 text-slate-500 font-medium text-sm">
+                    Kunan Ulit
+                </button>
+            </div>
+            
+            <!-- Hidden Input -->
+            <input type="file" id="camera-input" accept="image/*" capture="environment" class="hidden">
+        </div>
+
+        <!-- TRANSPARENCY BOARD VIEW -->
+        <div id="view-transparency" class="hidden fixed inset-0 bg-gov-bg z-30 flex flex-col overflow-hidden">
+            <!-- Header -->
+            <div class="px-4 py-3 border-b border-slate-200 flex items-center gap-3 bg-white">
+                <button id="btn-back-transparency" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-500">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <div>
+                    <h2 class="font-bold text-slate-800 text-sm">Flood Control Projects</h2>
+                    <p class="text-[10px] text-slate-500">Data Source: sumbongsapangulo.ph</p>
+                </div>
+            </div>
+
+            <!-- Dashboard Content -->
+            <div class="flex-1 overflow-y-auto p-4">
+                
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <p class="text-xs text-slate-500 font-medium uppercase mb-1">Total Projects</p>
+                        <h3 class="text-2xl font-bold text-slate-800" id="stat-total-projects">0</h3>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <p class="text-xs text-slate-500 font-medium uppercase mb-1">Total Contract Cost</p>
+                        <h3 class="text-xl font-bold text-green-600" id="stat-total-cost">₱0</h3>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <p class="text-xs text-slate-500 font-medium uppercase mb-1">Unique Contractors</p>
+                        <h3 class="text-2xl font-bold text-blue-600" id="stat-contractors">0</h3>
+                    </div>
+                </div>
+
+                <!-- Tabs -->
+                <div class="flex border-b border-slate-200 mb-4 gap-4">
+                    <button class="tab-btn pb-2 text-sm font-medium text-blue-600 border-b-2 border-blue-600 transition-colors" data-tab="visual">
+                        <i class="fa-solid fa-chart-pie mr-1"></i> Visual
+                    </button>
+                    <button class="tab-btn pb-2 text-sm font-medium text-slate-500 hover:text-slate-800 border-b-2 border-transparent transition-colors" data-tab="table">
+                        <i class="fa-solid fa-table mr-1"></i> Table
+                    </button>
+                </div>
+
+                <!-- Visual Tab Content -->
+                <div id="tab-visual" class="tab-content space-y-6">
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <h4 class="font-bold text-slate-800 text-sm mb-4">Cost Distribution by Region</h4>
+                        <canvas id="chart-region"></canvas>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <h4 class="font-bold text-slate-800 text-sm mb-4">Projects by Contractor</h4>
+                        <canvas id="chart-contractor"></canvas>
+                    </div>
+                </div>
+
+                <!-- Table Tab Content -->
+                <div id="tab-table" class="tab-content hidden">
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-slate-50 text-slate-500 font-medium border-b border-slate-200">
+                                    <tr>
+                                        <th class="p-3 whitespace-nowrap">Project Description</th>
+                                        <th class="p-3 whitespace-nowrap">Location</th>
+                                        <th class="p-3 whitespace-nowrap">Contractor</th>
+                                        <th class="p-3 whitespace-nowrap text-right">Cost (PHP)</th>
+                                        <th class="p-3 whitespace-nowrap text-right">Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="projects-table-body" class="divide-y divide-slate-100">
+                                    <!-- Rows injected via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- SYNC MODAL -->
+        <div id="sync-modal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm text-center">
+                <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fa-solid fa-shield-cat"></i>
+                </div>
+                <h3 data-i18n="syncing_evidence" class="text-lg font-bold text-slate-800 mb-2">Nagsi-sync ng Ebidensya</h3>
+                <p id="sync-status" class="text-sm text-slate-500 mb-6">Nagtatatag ng ligtas na koneksyon...</p>
+                
+                <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden mb-2">
+                    <div id="progress-bar" class="h-full bg-gov-blue w-0 transition-all duration-300 rounded-full"></div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // DOM Elements
+        const viewHome = document.getElementById('view-home');
+        const viewReport = document.getElementById('view-report');
+        const btnStartReport = document.getElementById('btn-start-report');
+        const btnCancel = document.getElementById('btn-cancel');
+        const btnTakePhoto = document.getElementById('btn-take-photo');
+        const btnSaveReport = document.getElementById('btn-save-report');
+        const btnSync = document.getElementById('btn-sync');
+        const btnRetake = document.getElementById('btn-retake');
+        const btnTransparency = document.getElementById('btn-transparency');
+        const btnBackTransparency = document.getElementById('btn-back-transparency');
+        const viewTransparency = document.getElementById('view-transparency');
+        const actionBar = document.getElementById('action-bar');
+        const cameraInput = document.getElementById('camera-input');
+        const canvas = document.getElementById('editor-canvas');
+        const ctx = canvas.getContext('2d');
+        const cameraPlaceholder = document.getElementById('camera-placeholder');
+        const editorControls = document.getElementById('editor-controls');
+        const reportsList = document.getElementById('reports-list');
+        const queueCount = document.getElementById('queue-count');
+        const emptyState = document.getElementById('empty-state');
+        const syncModal = document.getElementById('sync-modal');
+        const progressBar = document.getElementById('progress-bar');
+        const syncStatus = document.getElementById('sync-status');
+        const statusIndicator = document.getElementById('status-indicator');
+        const langToggle = document.getElementById('lang-toggle');
+        const sentimentContainer = document.getElementById('sentiment-container');
+        const sentimentInput = document.getElementById('sentiment-input');
+        const projectsTableBody = document.getElementById('projects-table-body');
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        // Translations
+        const translations = {
+            en: {
+                hello: "Hello, Citizen.",
+                tagline: "Help us build a better nation by reporting unfinished projects securely.",
+                pending_reports: "Pending Reports",
+                no_pending: "No pending reports",
+                upload_securely: "Upload Securely",
+                privacy_first: "Privacy First",
+                privacy_desc: "All photos are stripped of metadata. You can blur faces before saving.",
+                new_report: "New Report",
+                cancel: "Cancel",
+                save: "Save",
+                take_evidence: "Take Evidence Photo",
+                take_evidence_desc: "Capture the unfinished infrastructure. Ensure good lighting.",
+                open_camera: "Open Camera",
+                blur_tooltip: "Tap or drag to blur details",
+                retake: "Retake Photo",
+                syncing_evidence: "Syncing Evidence",
+                status_connecting: "Establishing secure connection...",
+                status_encrypting: "Encrypting packets...",
+                status_uploading: "Uploading to secure node...",
+                status_verifying: "Verifying integrity...",
+                status_success: "Evidence successfully uploaded.",
+                confirm_delete: "Delete this report?",
+                confirm_discard: "Discard this report?",
+                toggle_label: "<span class='text-gov-blue'>EN</span> | TL",
+                sentiment_label: "Additional Details (Optional)",
+                sentiment_placeholder: "Describe what you see or how you feel about this...",
+                transparency_title: "Flood Control Tracker",
+                transparency_desc: "Monitor government projects"
+            },
+            tl: {
+                hello: "Kumusta, Kababayan.",
+                tagline: "Tulungan kaming bumuo ng mas mabuting bansa sa pamamagitan ng ligtas na pag-uulat ng mga hindi tapos na proyekto.",
+                pending_reports: "Mga Nakabinbing Ulat",
+                no_pending: "Walang nakabinbing ulat",
+                upload_securely: "I-upload nang Ligtas",
+                privacy_first: "Pagkapribado Una",
+                privacy_desc: "Ang lahat ng larawan ay tinatanggalan ng metadata. Maaari mong labuin ang mga mukha bago i-save.",
+                new_report: "Bagong Ulat",
+                cancel: "Kanselahin",
+                save: "I-save",
+                take_evidence: "Kumuha ng Litrato",
+                take_evidence_desc: "Kunan ang hindi tapos na imprastraktura. Siguraduhing maliwanag.",
+                open_camera: "Buksan ang Kamera",
+                blur_tooltip: "Pindutin o i-drag upang labuin",
+                retake: "Kunan Ulit",
+                syncing_evidence: "Nagsi-sync ng Ebidensya",
+                status_connecting: "Nagtatatag ng ligtas na koneksyon...",
+                status_encrypting: "Ina-encrypt ang mga packet...",
+                status_uploading: "Ina-upload sa secure node...",
+                status_verifying: "Bina-verify ang integridad...",
+                status_success: "Matagumpay na na-upload ang ebidensya.",
+                confirm_delete: "Burahin ang ulat na ito?",
+                confirm_discard: "Itapon ang ulat na ito?",
+                toggle_label: "EN | <span class='text-gov-blue'>TL</span>",
+                sentiment_label: "Karagdagang Detalye (Opsyonal)",
+                sentiment_placeholder: "Ilarawan ang iyong nakikita o ang iyong nararamdaman tungkol dito...",
+                transparency_title: "Flood Control Tracker",
+                transparency_desc: "Bantayan ang mga proyekto ng gobyerno"
+            }
+        };
+
+        // Data: Flood Control Projects (Source: sumbongsapangulo.ph)
+        const floodProjects = [
+            { desc: "Construction of Flood Mitigation Structure along Agusan River (Dankias Section) Package 1", loc: "Butuan City, Agusan Del Norte", contractor: "ME 3 CONSTRUCTION", cost: 137272357.59, date: "2025-05-30", region: "Caraga" },
+            { desc: "Construction of Bank Protection, Lower Agusan River, Barangay Golden Ribbon", loc: "Butuan City, Agusan Del Norte", contractor: "RAMISES CONSTRUCTION", cost: 96158174.50, date: "2025-05-30", region: "Caraga" },
+            { desc: "Construction of Flood Mitigation Structure along Orani River", loc: "Orani, Bataan", contractor: "ORANI CONSTRUCTION AND SUPPLY", cost: 48999998.54, date: "2025-05-28", region: "Region III" },
+            { desc: "Construction of Flood Control Dike along Kabacan River", loc: "Magpet, Cotabato", contractor: "MAER SUMMIT KONSTRUKT CO.", cost: 96017492.67, date: "2025-05-27", region: "Region XII" },
+            { desc: "Construction of Drainage Structure, Barangay Sacsac", loc: "Consolacion, Cebu", contractor: "XLA CONSTRUCTION", cost: 4939190.15, date: "2025-05-27", region: "Region VII" },
+            { desc: "Construction of River Control Structure, Bucayao River, Managpi Section", loc: "Calapan City, Oriental Mindoro", contractor: "CEFF TRADING & ENGINEERING", cost: 19299949.90, date: "2025-05-27", region: "MIMAROPA" },
+            { desc: "Construction of Drainage System, Mag-Asawang Tubig RIS", loc: "Naujan, Oriental Mindoro", contractor: "CEFF TRADING / JUWAWI CORP", cost: 14699999.28, date: "2025-05-26", region: "MIMAROPA" },
+            { desc: "Construction of Flood Mitigation Structure along Cagayan de Oro City-Dominorog-Camp Kibaritan Rd", loc: "Talakag, Bukidnon", contractor: "VEN RAY CONSTRUCTION", cost: 96500000.00, date: "2025-05-23", region: "Region X" },
+            { desc: "Construction of Flood Mitigation Structure along Pampanga River, Barangay Pagas", loc: "Cabanatuan City, Nueva Ecija", contractor: "CELSO C. FERRER CONSTRUCTION", cost: 95052371.10, date: "2025-05-23", region: "Region III" },
+            { desc: "Construction of Slope Protection Structure along Buenavista Creek", loc: "Tarlac City, Tarlac", contractor: "BIG BERTHA CONSTRUCTION", cost: 14229719.67, date: "2025-05-22", region: "Region III" },
+            { desc: "Installation of Booster Pump at Estero de San Miguel, Package 1b", loc: "Manila City", contractor: "EIGHT J'S / GENECOR", cost: 94675499.87, date: "2025-05-22", region: "NCR" }
+        ];
+
+        // State
+        let reports = JSON.parse(localStorage.getItem('bk_reports') || '[]');
+        let currentLang = 'tl'; // Default to Tagalog
+
+        // --- Initialization ---
+        function init() {
+            updateLanguage(currentLang);
+            renderQueue();
+            updateNetworkStatus();
+            initTransparencyBoard(); // Initialize charts
+            window.addEventListener('online', updateNetworkStatus);
+            window.addEventListener('offline', updateNetworkStatus);
+        }
+
+        // --- Transparency Board Logic ---
+        btnTransparency.addEventListener('click', () => {
+            viewTransparency.classList.remove('hidden');
+        });
+
+        btnBackTransparency.addEventListener('click', () => {
+            viewTransparency.classList.add('hidden');
+        });
+
+        // Tab Switching
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Remove active classes
+                tabBtns.forEach(b => {
+                    b.classList.remove('text-blue-600', 'border-blue-600');
+                    b.classList.add('text-slate-500', 'border-transparent');
+                });
+                tabContents.forEach(c => c.classList.add('hidden'));
+
+                // Add active classes
+                btn.classList.remove('text-slate-500', 'border-transparent');
+                btn.classList.add('text-blue-600', 'border-blue-600');
+                
+                const target = btn.getAttribute('data-tab');
+                document.getElementById(`tab-${target}`).classList.remove('hidden');
+            });
+        });
+
+        function initTransparencyBoard() {
+            // 1. Stats
+            document.getElementById('stat-total-projects').textContent = floodProjects.length;
+            const totalCost = floodProjects.reduce((acc, curr) => acc + curr.cost, 0);
+            document.getElementById('stat-total-cost').textContent = '₱' + (totalCost / 1000000).toFixed(1) + 'M';
+            const uniqueContractors = new Set(floodProjects.map(p => p.contractor)).size;
+            document.getElementById('stat-contractors').textContent = uniqueContractors;
+
+            // 2. Table
+            projectsTableBody.innerHTML = floodProjects.map(p => `
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="p-3">
+                        <div class="font-semibold text-slate-800 truncate max-w-[200px]" title="${p.desc}">${p.desc}</div>
+                        <div class="text-xs text-slate-500 md:hidden">${p.region}</div>
+                    </td>
+                    <td class="p-3 text-slate-600">
+                        <div class="text-xs font-bold bg-slate-100 px-2 py-1 rounded w-fit mb-1">${p.region}</div>
+                        ${p.loc}
+                    </td>
+                    <td class="p-3 text-slate-600 text-xs font-mono">${p.contractor}</td>
+                    <td class="p-3 text-right font-bold text-slate-700">₱${p.cost.toLocaleString()}</td>
+                    <td class="p-3 text-right text-xs text-slate-500">${p.date}</td>
+                </tr>
+            `).join('');
+
+            // 3. Charts (Chart.js)
+            
+            // Region Chart
+            const regionCounts = {};
+            floodProjects.forEach(p => { regionCounts[p.region] = (regionCounts[p.region] || 0) + p.cost; });
+            
+            new Chart(document.getElementById('chart-region'), {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(regionCounts),
+                    datasets: [{
+                        label: 'Total Cost (PHP)',
+                        data: Object.values(regionCounts),
+                        backgroundColor: '#3b82f6',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { callback: (val) => '₱' + (val/1000000) + 'M' } } }
+                }
+            });
+
+            // Contractor Chart (Top 5 by Cost)
+            const contractorCosts = {};
+            floodProjects.forEach(p => { contractorCosts[p.contractor] = (contractorCosts[p.contractor] || 0) + p.cost; });
+            const sortedContractors = Object.entries(contractorCosts).sort((a,b) => b[1] - a[1]).slice(0, 5);
+
+            new Chart(document.getElementById('chart-contractor'), {
+                type: 'doughnut',
+                data: {
+                    labels: sortedContractors.map(c => c[0].split(' ')[0] + '...'), // Truncate name
+                    datasets: [{
+                        data: sortedContractors.map(c => c[1]),
+                        backgroundColor: ['#1e3a8a', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        }
+
+        // --- Language Logic ---
+        function updateLanguage(lang) {
+            currentLang = lang;
+            const t = translations[lang];
+
+            // Update all elements with data-i18n attribute
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (t[key]) {
+                    el.textContent = t[key];
+                }
+            });
+
+            // Update specific placeholders
+            if(sentimentInput) sentimentInput.placeholder = t.sentiment_placeholder;
+
+            // Update Toggle Button HTML safely
+            langToggle.innerHTML = t.toggle_label;
+        }
+
+        langToggle.addEventListener('click', () => {
+            const newLang = currentLang === 'tl' ? 'en' : 'tl';
+            updateLanguage(newLang);
+        });
+
+        // Helper for dynamic strings
+        function t(key) {
+            return translations[currentLang][key] || key;
+        }
+
+        function updateNetworkStatus() {
+            if (navigator.onLine) {
+                statusIndicator.className = "flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-700";
+                statusIndicator.innerHTML = '<div class="w-2 h-2 rounded-full bg-green-500"></div> Online';
+            } else {
+                statusIndicator.className = "flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-slate-100 text-slate-500";
+                statusIndicator.innerHTML = '<div class="w-2 h-2 rounded-full bg-slate-400"></div> Offline';
+            }
+        }
+
+        // --- Navigation ---
+        btnStartReport.addEventListener('click', () => {
+            viewReport.classList.remove('hidden');
+            resetEditor();
+        });
+
+        btnCancel.addEventListener('click', () => {
+            if (!canvas.classList.contains('hidden')) {
+                if (confirm(t('confirm_discard'))) {
+                    closeReportModal();
+                }
+            } else {
+                closeReportModal();
+            }
+        });
+
+        function closeReportModal() {
+            viewReport.classList.add('hidden');
+        }
+
+        // --- Camera & Canvas Logic ---
+        btnTakePhoto.addEventListener('click', () => {
+            cameraInput.click();
+        });
+
+        if(btnRetake) {
+            btnRetake.addEventListener('click', () => {
+                cameraInput.click();
+            });
+        }
+
+        cameraInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    const maxWidth = 800;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > maxWidth) {
+                        height *= maxWidth / width;
+                        width = maxWidth;
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    canvas.classList.remove('hidden');
+                    cameraPlaceholder.classList.add('hidden');
+                    editorControls.classList.remove('hidden');
+                    sentimentContainer.classList.remove('hidden'); // Show sentiment input
+                    if(actionBar) actionBar.classList.remove('hidden');
+                    
+                    btnSaveReport.classList.remove('hidden');
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // --- Touch to Blur Logic ---
+        function blurRegion(x, y) {
+            const size = 50; 
+            const halfSize = size / 2;
+            const startX = Math.max(0, x - halfSize);
+            const startY = Math.max(0, y - halfSize);
+            const w = Math.min(canvas.width - startX, size);
+            const h = Math.min(canvas.height - startY, size);
+            
+            if (w <= 0 || h <= 0) return;
+
+            const sampleSize = 12; 
+            
+            for (let i = 0; i < w; i += sampleSize) {
+                for (let j = 0; j < h; j += sampleSize) {
+                    const sampleX = startX + i;
+                    const sampleY = startY + j;
+                    
+                    const pixelData = ctx.getImageData(sampleX + sampleSize/2, sampleY + sampleSize/2, 1, 1).data;
+                    ctx.fillStyle = `rgb(${pixelData[0]}, ${pixelData[1]}, ${pixelData[2]})`;
+                    ctx.fillRect(sampleX, sampleY, sampleSize, sampleSize);
+                }
+            }
+        }
+
+        let isDrawing = false;
+
+        function getCanvasCoordinates(e) {
+            const rect = canvas.getBoundingClientRect();
+            let clientX, clientY;
+            if (e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            return {
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
+            };
+        }
+
+        canvas.addEventListener('mousedown', (e) => { isDrawing = true; blurRegion(getCanvasCoordinates(e).x, getCanvasCoordinates(e).y); });
+        canvas.addEventListener('mousemove', (e) => { if (!isDrawing) return; blurRegion(getCanvasCoordinates(e).x, getCanvasCoordinates(e).y); });
+        canvas.addEventListener('mouseup', () => isDrawing = false);
+        canvas.addEventListener('mouseleave', () => isDrawing = false);
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); isDrawing = true; blurRegion(getCanvasCoordinates(e).x, getCanvasCoordinates(e).y); });
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); if (!isDrawing) return; blurRegion(getCanvasCoordinates(e).x, getCanvasCoordinates(e).y); });
+        canvas.addEventListener('touchend', () => isDrawing = false);
+
+        // --- Save & Offline Queue ---
+        btnSaveReport.addEventListener('click', () => {
+            const timestamp = new Date().toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            const imageData = canvas.toDataURL('image/jpeg', 0.7); 
+            const sentiment = sentimentInput.value.trim(); // Capture sentiment
+            
+            const report = {
+                id: Date.now(),
+                timestamp: timestamp,
+                image: imageData,
+                sentiment: sentiment // Save to object
+            };
+
+            reports.push(report);
+            localStorage.setItem('bk_reports', JSON.stringify(reports));
+
+            resetEditor();
+            closeReportModal();
+            renderQueue();
+        });
+
+        function resetEditor() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            canvas.classList.add('hidden');
+            cameraPlaceholder.classList.remove('hidden');
+            editorControls.classList.add('hidden');
+            sentimentContainer.classList.add('hidden'); // Hide sentiment
+            if(actionBar) actionBar.classList.add('hidden');
+            btnSaveReport.classList.add('hidden');
+            cameraInput.value = '';
+            sentimentInput.value = ''; // Clear text
+        }
+
+        function renderQueue() {
+            reportsList.innerHTML = '';
+            queueCount.textContent = reports.length;
+
+            if (reports.length === 0) {
+                emptyState.classList.remove('hidden');
+                btnSync.classList.add('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                btnSync.classList.remove('hidden');
+                
+                [...reports].reverse().forEach(report => {
+                    const item = document.createElement('div');
+                    item.className = 'bg-white p-3 rounded-lg border border-slate-100 shadow-sm flex flex-col gap-2';
+                    
+                    // Build sentiment HTML if exists
+                    const sentimentHtml = report.sentiment 
+                        ? `<div class="bg-slate-50 p-2 rounded text-xs text-slate-600 italic border-l-2 border-gov-blue">"${report.sentiment}"</div>` 
+                        : '';
+
+                    item.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <img src="${report.image}" class="w-12 h-12 object-cover rounded-md bg-slate-200">
+                            <div class="flex-1">
+                                <p class="font-semibold text-sm text-slate-800">Report #${report.id.toString().slice(-4)}</p>
+                                <p class="text-xs text-slate-500">${report.timestamp}</p>
+                            </div>
+                            <button onclick="deleteReport(${report.id})" class="text-slate-400 hover:text-red-500 p-2 transition-colors">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                        ${sentimentHtml}
+                    `;
+                    reportsList.appendChild(item);
+                });
+            }
+        }
+
+        window.deleteReport = function(id) {
+            if(confirm(t('confirm_delete'))) {
+                reports = reports.filter(r => r.id !== id);
+                localStorage.setItem('bk_reports', JSON.stringify(reports));
+                renderQueue();
+            }
+        };
+
+        // --- Safe Sync Simulation ---
+        btnSync.addEventListener('click', () => {
+            syncModal.classList.remove('hidden');
+            
+            setTimeout(() => {
+                syncStatus.textContent = t('status_encrypting');
+                progressBar.style.width = "30%";
+            }, 500);
+
+            setTimeout(() => {
+                syncStatus.textContent = t('status_uploading');
+                progressBar.style.width = "70%";
+            }, 1500);
+
+            setTimeout(() => {
+                syncStatus.textContent = t('status_verifying');
+                progressBar.style.width = "90%";
+            }, 2500);
+
+            setTimeout(() => {
+                progressBar.style.width = "100%";
+                syncStatus.textContent = t('status_success');
+                syncStatus.className = "text-sm text-green-600 font-bold mb-6";
+                
+                reports = [];
+                localStorage.removeItem('bk_reports');
+                renderQueue();
+                
+                setTimeout(() => {
+                    syncModal.classList.add('hidden');
+                    syncStatus.textContent = t('status_connecting');
+                    syncStatus.className = "text-sm text-slate-500 mb-6";
+                    progressBar.style.width = "0";
+                }, 1500);
+            }, 3500);
+        });
+
+        init();
+    </script>
+</body>
+</html>

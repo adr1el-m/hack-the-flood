@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SubaybayPH – Community Audit Feed</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'gov-blue': '#1e3a8a'
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans">
+  <header class="sticky top-0 z-10 bg-white border-b border-slate-200">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-9 h-9 rounded-lg bg-gov-blue text-white flex items-center justify-center"><i class="fa-solid fa-landmark"></i></div>
+        <div>
+          <div class="text-sm font-bold text-gov-blue leading-tight">SubaybayPH</div>
+          <div class="text-[10px] text-slate-500 uppercase tracking-wider">Community Audit Feed</div>
+        </div>
+      </div>
+      <div id="status" class="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-700">
+        <div class="w-2 h-2 rounded-full bg-green-500"></div>
+        Online
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-2xl mx-auto px-4 py-6">
+    <div id="loading" class="flex items-center justify-center py-8">
+      <div class="w-10 h-10 border-4 border-slate-200 border-t-gov-blue rounded-full animate-spin"></div>
+      <span class="ml-3 text-sm text-slate-600">Loading SubaybayPH...</span>
+    </div>
+
+    <div id="feed" class="space-y-4 hidden"></div>
+  </main>
+
+  <template id="card-template">
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="grid grid-cols-[52px_1fr]">
+        <div class="bg-slate-50 border-r border-slate-200 flex flex-col items-center justify-center py-4 gap-2">
+          <button data-upvote class="w-8 h-8 rounded bg-white border border-slate-200 text-slate-600 hover:text-gov-blue hover:border-gov-blue transition"><i class="fa-solid fa-arrow-up"></i></button>
+          <div data-votes class="text-sm font-bold text-slate-700"></div>
+        </div>
+        <div class="p-4">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700 font-bold">✅ Verified by NGO</span>
+          </div>
+          <div data-meta class="text-xs text-slate-500 mb-2"></div>
+          <h3 data-title class="text-lg font-bold text-slate-900 mb-3"></h3>
+          <div class="rounded-lg overflow-hidden border border-slate-200 mb-3">
+            <img data-image class="w-full h-64 object-cover" alt="Report evidence" />
+          </div>
+          <div class="flex items-center justify-between">
+            <button data-comments class="text-sm text-slate-600 hover:text-gov-blue font-medium"><i class="fa-regular fa-message mr-1"></i><span data-comments-count>Comments</span></button>
+            <button data-share class="text-sm text-slate-600 hover:text-gov-blue font-medium"><i class="fa-solid fa-share mr-1"></i>Share</button>
+          </div>
+          <div data-comments-box class="hidden mt-3 space-y-2">
+            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm">Resident: I walk past here every day, nothing has changed!</div>
+            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm">Volunteer: We checked records, delays look suspicious.</div>
+            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm">Engineer: DPWH promised completion last quarter.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script type="module">
+    const firebaseConfig = {
+      apiKey: '',
+      authDomain: '',
+      projectId: '',
+      storageBucket: '',
+      messagingSenderId: '',
+      appId: '',
+      measurementId: ''
+    };
+
+    const demoData = [
+      {
+        id: 'demo-1',
+        title: 'Ghost Dike Project on Roxas Ave',
+        location: 'Barangay San Isidro',
+        imageUrl: 'https://images.unsplash.com/photo-1482192596544-9eb780fc7f66?q=80&w=1200&auto=format&fit=crop',
+        votes: 42,
+        createdAt: Date.now() - 1000 * 60 * 60 * 24 * 3
+      },
+      {
+        id: 'demo-2',
+        title: 'Drainage promised, still flooding every week',
+        location: 'Barangay Mabini',
+        imageUrl: 'https://images.unsplash.com/photo-1528419364575-4c1ee429e4b3?q=80&w=1200&auto=format&fit=crop',
+        votes: 19,
+        createdAt: Date.now() - 1000 * 60 * 60 * 20
+      },
+      {
+        id: 'demo-3',
+        title: 'Contractor left site, zero progress',
+        location: 'Barangay Sta. Lucia',
+        imageUrl: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?q=80&w=1200&auto=format&fit=crop',
+        votes: 7,
+        createdAt: Date.now() - 1000 * 60 * 60 * 5
+      }
+    ];
+
+    const feed = document.getElementById('feed');
+    const loading = document.getElementById('loading');
+    const tpl = document.getElementById('card-template');
+    const demoVotesKey = 'subaybay_demo_votes';
+    const demoVotes = JSON.parse(localStorage.getItem(demoVotesKey) || '{}');
+
+    function timeAgo(ts) {
+      const diff = Math.floor((Date.now() - ts) / 1000);
+      if (diff < 60) return `${diff}s ago`;
+      const m = Math.floor(diff / 60);
+      if (m < 60) return `${m}m ago`;
+      const h = Math.floor(m / 60);
+      if (h < 24) return `${h}h ago`;
+      const d = Math.floor(h / 24);
+      return `${d}d ago`;
+    }
+
+    function renderCards(items, mode) {
+      feed.innerHTML = '';
+      items.forEach((item) => {
+        const node = tpl.content.cloneNode(true);
+        const votes = (mode === 'demo') ? (demoVotes[item.id] ?? item.votes ?? 0) : (item.votes ?? 0);
+        node.querySelector('[data-votes]').textContent = votes;
+        node.querySelector('[data-title]').textContent = item.title || 'Untitled';
+        node.querySelector('[data-image]').src = item.imageUrl || 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?q=80&w=1200&auto=format&fit=crop';
+        const when = item.createdAt instanceof Date ? item.createdAt.getTime() : (typeof item.createdAt === 'number' ? item.createdAt : Date.now());
+        node.querySelector('[data-meta]').textContent = `Posted by Anonymous • ${item.location || 'Unknown Location'} • ${timeAgo(when)}`;
+        const root = node.querySelector('.bg-white');
+        root.dataset.id = item.id;
+        root.dataset.mode = mode;
+        feed.appendChild(node);
+      });
+      loading.classList.add('hidden');
+      feed.classList.remove('hidden');
+    }
+
+    feed.addEventListener('click', async (e) => {
+      const card = e.target.closest('.bg-white');
+      if (!card) return;
+      const id = card.dataset.id;
+      const mode = card.dataset.mode;
+
+      if (e.target.closest('[data-upvote]')) {
+        const votesEl = card.querySelector('[data-votes]');
+        if (mode === 'demo') {
+          const current = parseInt(votesEl.textContent || '0', 10) + 1;
+          votesEl.textContent = current;
+          demoVotes[id] = current;
+          localStorage.setItem(demoVotesKey, JSON.stringify(demoVotes));
+          return;
+        }
+        try {
+          const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js');
+          const { getFirestore, doc, runTransaction } = await import('https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js');
+          const app = initializeApp(firebaseConfig);
+          const db = getFirestore(app);
+          await runTransaction(db, async (tx) => {
+            const ref = doc(db, 'reports', id);
+            const snap = await tx.get(ref);
+            const next = (snap.data()?.votes || 0) + 1;
+            tx.update(ref, { votes: next });
+          });
+        } catch {}
+        return;
+      }
+
+      if (e.target.closest('[data-comments]')) {
+        const box = card.querySelector('[data-comments-box]');
+        box.classList.toggle('hidden');
+        return;
+      }
+
+      if (e.target.closest('[data-share]')) {
+        const title = card.querySelector('[data-title]').textContent;
+        const url = location.href;
+        if (navigator.share) {
+          try { await navigator.share({ title, text: title, url }); } catch {}
+        } else {
+          navigator.clipboard.writeText(url);
+        }
+        return;
+      }
+    });
+
+    async function init() {
+      const hasKeys = firebaseConfig.apiKey && firebaseConfig.projectId;
+      if (!hasKeys) {
+        const sorted = demoData.slice().sort((a, b) => (b.votes || 0) - (a.votes || 0));
+        renderCards(sorted, 'demo');
+        return;
+      }
+      try {
+        const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js');
+        const { getFirestore, collection, query, where, orderBy, onSnapshot } = await import('https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js');
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        let q;
+        try {
+          q = query(collection(db, 'reports'), where('status', '==', 'Verified'), orderBy('votes', 'desc'));
+          onSnapshot(q, (snap) => {
+            const items = snap.docs.map(d => ({
+              id: d.id,
+              title: d.data().title,
+              location: d.data().location,
+              imageUrl: d.data().imageUrl,
+              votes: d.data().votes || 0,
+              createdAt: d.data().createdAt?.toDate?.() || new Date()
+            }));
+            renderCards(items, 'firestore');
+          });
+        } catch {
+          q = query(collection(db, 'reports'), where('status', '==', 'Verified'));
+          onSnapshot(q, (snap) => {
+            const items = snap.docs.map(d => ({
+              id: d.id,
+              title: d.data().title,
+              location: d.data().location,
+              imageUrl: d.data().imageUrl,
+              votes: d.data().votes || 0,
+              createdAt: d.data().createdAt?.toDate?.() || new Date()
+            })).sort((a, b) => (b.votes || 0) - (a.votes || 0));
+            renderCards(items, 'firestore');
+          });
+        }
+      } catch {
+        const sorted = demoData.slice().sort((a, b) => (b.votes || 0) - (a.votes || 0));
+        renderCards(sorted, 'demo');
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

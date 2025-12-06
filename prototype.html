@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SubaybayPH - Community Audit Platform</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        /* Custom Badge Colors */
+        .badge-watchdog { @apply bg-blue-100 text-blue-800; }
+        .badge-sentinel { @apply bg-purple-100 text-purple-800; }
+        .badge-guardian { @apply bg-yellow-100 text-yellow-800; }
+    </style>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'gov-blue': '#2563eb',
+                        'gov-dark': '#1e40af',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+    <!-- ==================== APP CONTAINER ==================== -->
+    <div id="app" class="relative">
+        
+        <!-- ==================== VIEW 1: LOGIN ==================== -->
+        <div id="loginView" class="hidden min-h-screen flex items-center justify-center bg-gov-blue p-4">
+            <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden fade-in">
+                <div class="p-8 text-center">
+                    <div class="w-16 h-16 bg-blue-100 text-gov-blue rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+                        <i class="fa-solid fa-landmark"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold text-slate-900 mb-1">SubaybayPH</h1>
+                    <p class="text-slate-500 mb-8">Citizen-led audit & corruption reporting</p>
+
+                    <!-- Google Sign In -->
+                    <button onclick="handleGoogleLogin()" class="w-full bg-white border border-slate-200 text-slate-700 font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-3 hover:bg-slate-50 transition-all shadow-sm mb-4 group">
+                        <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5" alt="Google">
+                        <span>Sign in with Google</span>
+                    </button>
+
+                    <div class="relative my-6">
+                        <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-200"></div></div>
+                        <div class="relative flex justify-center text-sm"><span class="px-2 bg-white text-slate-500">Or continue with</span></div>
+                    </div>
+
+                    <!-- Email Sign In -->
+                    <form onsubmit="handleEmailLogin(event)" class="space-y-4 text-left">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-700 mb-1">Email Address</label>
+                            <input type="email" id="emailInput" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-gov-blue focus:border-gov-blue outline-none transition-all" placeholder="citizen@email.com" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-700 mb-1">Password</label>
+                            <input type="password" id="passwordInput" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-gov-blue focus:border-gov-blue outline-none transition-all" placeholder="••••••••" required>
+                        </div>
+                        <button type="submit" class="w-full bg-gov-blue text-white font-bold py-3 rounded-xl hover:bg-gov-dark transition-all shadow-lg shadow-blue-500/30">
+                            Sign In
+                        </button>
+                    </form>
+                    
+                    <div class="mt-6 text-xs text-slate-400">
+                        By continuing, you agree to our <a href="#" class="underline">Terms of Service</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== VIEW 2: FEED ==================== -->
+        <div id="feedView" class="hidden min-h-screen pb-20">
+            <!-- Navbar -->
+            <nav class="fixed top-0 w-full bg-white border-b border-slate-200 z-50 px-4 py-3 shadow-sm">
+                <div class="max-w-3xl mx-auto flex justify-between items-center">
+                    <div class="flex items-center gap-2 cursor-pointer" onclick="router.navigate('feed')">
+                        <div class="w-8 h-8 bg-gov-blue rounded-lg flex items-center justify-center text-white">
+                            <i class="fa-solid fa-landmark"></i>
+                        </div>
+                        <span class="font-bold text-gov-blue text-lg hidden sm:block">SubaybayPH</span>
+                    </div>
+
+                    <!-- Dynamic User Widget -->
+                    <div id="navUserWidget">
+                        <!-- Injected via JS -->
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Feed Content -->
+            <div class="max-w-2xl mx-auto mt-20 px-4 space-y-6" id="feedContainer">
+                <!-- Posts injected via JS -->
+                <div class="text-center py-10">
+                    <i class="fa-solid fa-circle-notch fa-spin text-gov-blue text-2xl"></i>
+                    <p class="text-slate-500 mt-2">Loading community reports...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== VIEW 3: PROFILE ==================== -->
+        <div id="profileView" class="hidden min-h-screen pt-20 pb-10 px-4">
+            <div class="max-w-2xl mx-auto fade-in">
+                <button onclick="router.navigate('feed')" class="mb-6 flex items-center gap-2 text-slate-500 hover:text-gov-blue transition-colors">
+                    <i class="fa-solid fa-arrow-left"></i> Back to Feed
+                </button>
+
+                <!-- Profile Card -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-6">
+                    <div class="h-32 bg-gradient-to-r from-blue-600 to-indigo-600"></div>
+                    <div class="px-6 pb-6">
+                        <div class="relative flex justify-between items-end -mt-12 mb-4">
+                            <img id="profileAvatar" src="" class="w-24 h-24 rounded-full border-4 border-white shadow-md bg-slate-200 object-cover">
+                            <button onclick="handleLogout()" class="mb-2 text-sm text-red-500 font-medium hover:underline">
+                                <i class="fa-solid fa-sign-out-alt mr-1"></i> Logout
+                            </button>
+                        </div>
+                        
+                        <h1 id="profileName" class="text-2xl font-bold text-slate-900">User Name</h1>
+                        <p id="profileEmail" class="text-slate-500 text-sm mb-6">user@email.com</p>
+
+                        <!-- Reputation Section -->
+                        <div class="bg-slate-50 rounded-xl p-6 border border-slate-100 text-center mb-6">
+                            <div class="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1">Reputation Score</div>
+                            <div id="profileReputation" class="text-5xl font-extrabold text-gov-blue mb-2">0</div>
+                            <p class="text-sm text-slate-600">Credibility Points</p>
+                        </div>
+
+                        <!-- Badges -->
+                        <div class="mb-2">
+                            <h3 class="text-sm font-bold text-slate-700 mb-3">Earned Badges</h3>
+                            <div id="profileBadges" class="flex flex-wrap gap-2">
+                                <!-- Badges injected via JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- User History -->
+                <h3 class="text-lg font-bold text-slate-800 mb-4">Submission History</h3>
+                <div id="profileHistory" class="space-y-4">
+                    <!-- History items injected via JS -->
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ==================== LOGIC ==================== -->
+    <script type="module">
+        // Import Firebase SDKs from CDN
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+        import { getFirestore, collection, getDocs, doc, setDoc, getDoc, updateDoc, increment, query, where, orderBy } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+        // --- CONFIGURATION ---
+        // TODO: Replace with actual keys or leave empty for Mock Mode
+        const firebaseConfig = {
+            apiKey: "",
+            authDomain: "",
+            projectId: "",
+            storageBucket: "",
+            messagingSenderId: "",
+            appId: ""
+        };
+
+        // --- STATE MANAGEMENT ---
+        const state = {
+            user: null, // Current logged in user
+            isMock: true, // Fallback mode
+            mockUser: {
+                uid: 'mock-user-123',
+                displayName: 'Juan Dela Cruz',
+                email: 'juan@bayan.ph',
+                photoURL: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Juan',
+                reputation: 85,
+                role: 'Citizen'
+            },
+            posts: []
+        };
+
+        // --- MOCK DATA GENERATOR ---
+        const generateMockPosts = () => [
+            {
+                id: 'post-1',
+                title: 'Ghost Project: Bridge in Brgy. San Jose',
+                location: 'San Jose, Batangas',
+                description: 'The bridge was reported completed in 2023 but foundation is barely started. Contractor is nowhere to be found.',
+                imageUrl: 'https://images.unsplash.com/photo-1518458028785-8fbcd101ebb9?q=80&w=800&auto=format&fit=crop',
+                votes: 142,
+                authorId: 'user-2',
+                authorName: 'Maria Santos',
+                status: 'Verified',
+                timestamp: Date.now() - 86400000
+            },
+            {
+                id: 'post-2',
+                title: 'Substandard Road Materials on Highway 54',
+                location: 'Quezon City',
+                description: 'Asphalt is already cracking just 2 weeks after laying. Heavy rains washed away parts of the shoulder.',
+                imageUrl: 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?q=80&w=800&auto=format&fit=crop',
+                votes: 89,
+                authorId: 'user-3',
+                authorName: 'Pedro Penduko',
+                status: 'Verified',
+                timestamp: Date.now() - 172800000
+            }
+        ];
+
+        // --- INITIALIZATION ---
+        let app, auth, db;
+        
+        try {
+            if (firebaseConfig.apiKey) {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                state.isMock = false;
+            } else {
+                console.warn("No Firebase config found. Running in Mock Mode.");
+            }
+        } catch (e) {
+            console.error("Firebase Init Error:", e);
+            state.isMock = true;
+        }
+
+        // --- ROUTER ---
+        const router = {
+            navigate: (viewId) => {
+                // Hide all views
+                ['loginView', 'feedView', 'profileView'].forEach(id => {
+                    document.getElementById(id).classList.add('hidden');
+                });
+                
+                // Show target view
+                const target = document.getElementById(viewId + 'View');
+                if (target) {
+                    target.classList.remove('hidden');
+                    target.classList.add('fade-in');
+                }
+
+                // Logic triggers
+                if (viewId === 'feed') renderFeed();
+                if (viewId === 'profile') renderProfile();
+            }
+        };
+
+        // --- AUTHENTICATION LOGIC ---
+        
+        // Listen to Auth State
+        if (!state.isMock) {
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    // Sync with Firestore User Doc
+                    const userRef = doc(db, 'users', user.uid);
+                    const userSnap = await getDoc(userRef);
+                    
+                    if (!userSnap.exists()) {
+                        // Create new user doc
+                        await setDoc(userRef, {
+                            displayName: user.displayName,
+                            email: user.email,
+                            photoURL: user.photoURL,
+                            reputation: 10, // Start with 10 points
+                            role: 'Citizen',
+                            createdAt: Date.now()
+                        });
+                        state.user = { ...user, reputation: 10, role: 'Citizen' };
+                    } else {
+                        state.user = { ...user, ...userSnap.data() };
+                    }
+                    router.navigate('feed');
+                } else {
+                    state.user = null;
+                    router.navigate('login');
+                }
+                updateNavUserWidget();
+            });
+        } else {
+            // Mock Mode Auth Handling
+            // Check session storage for persistence
+            const storedUser = sessionStorage.getItem('mockUser');
+            if (storedUser) {
+                state.user = JSON.parse(storedUser);
+                router.navigate('feed');
+            } else {
+                router.navigate('login');
+            }
+            updateNavUserWidget();
+        }
+
+        // Login Functions attached to window for HTML access
+        window.handleGoogleLogin = async () => {
+            if (state.isMock) {
+                // Simulate Login
+                state.user = state.mockUser;
+                sessionStorage.setItem('mockUser', JSON.stringify(state.user));
+                updateNavUserWidget();
+                router.navigate('feed');
+                return;
+            }
+            
+            const provider = new GoogleAuthProvider();
+            try {
+                await signInWithPopup(auth, provider);
+            } catch (error) {
+                console.error("Login Failed", error);
+                alert("Login failed: " + error.message);
+            }
+        };
+
+        window.handleEmailLogin = async (e) => {
+            e.preventDefault();
+            // For prototype, treat email login same as mock login
+            window.handleGoogleLogin(); 
+        };
+
+        window.handleLogout = async () => {
+            if (state.isMock) {
+                state.user = null;
+                sessionStorage.removeItem('mockUser');
+                router.navigate('login');
+            } else {
+                await signOut(auth);
+            }
+        };
+
+        // --- UI RENDERERS ---
+
+        function updateNavUserWidget() {
+            const container = document.getElementById('navUserWidget');
+            if (state.user) {
+                container.innerHTML = `
+                    <div class="flex items-center gap-3 cursor-pointer" onclick="router.navigate('profile')">
+                        <div class="text-right hidden sm:block">
+                            <div class="text-xs text-slate-500">Reputation</div>
+                            <div class="text-sm font-bold text-gov-blue">⭐ ${state.user.reputation}</div>
+                        </div>
+                        <img src="${state.user.photoURL || 'https://ui-avatars.com/api/?name='+state.user.displayName}" class="w-9 h-9 rounded-full border border-slate-200">
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <button onclick="router.navigate('login')" class="text-sm font-bold text-gov-blue hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors">
+                        Log In
+                    </button>
+                `;
+            }
+        }
+
+        async function renderFeed() {
+            const container = document.getElementById('feedContainer');
+            
+            let posts = [];
+            if (state.isMock) {
+                // Load mock posts + any local session posts
+                posts = generateMockPosts();
+                // Merge logic could go here
+            } else {
+                // Fetch from Firestore
+                try {
+                    const q = query(collection(db, "reports"), where("status", "==", "Verified"), orderBy("votes", "desc"));
+                    const querySnapshot = await getDocs(q);
+                    posts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                } catch (e) {
+                    console.log("Firestore fetch error, falling back to mock", e);
+                    posts = generateMockPosts();
+                }
+            }
+            state.posts = posts;
+
+            container.innerHTML = posts.map(post => `
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+                    <div class="p-4 flex gap-3">
+                        <!-- Upvote Column -->
+                        <div class="flex flex-col items-center gap-1 pr-3 border-r border-slate-100 min-w-[50px]">
+                            <button onclick="handleUpvote('${post.id}', '${post.authorId}')" class="text-slate-400 hover:text-gov-blue transition-colors p-1 rounded hover:bg-blue-50 group">
+                                <i class="fa-solid fa-arrow-up transform group-hover:-translate-y-0.5 transition-transform"></i>
+                            </button>
+                            <span class="font-bold text-slate-700" id="vote-${post.id}">${post.votes}</span>
+                            <button class="text-slate-400 hover:text-red-500 transition-colors p-1 rounded hover:bg-red-50">
+                                <i class="fa-solid fa-arrow-down"></i>
+                            </button>
+                        </div>
+
+                        <!-- Content Column -->
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-2 text-xs text-slate-500">
+                                <span class="font-semibold text-slate-700">${post.authorName}</span>
+                                <span>•</span>
+                                <span>${new Date(post.timestamp).toLocaleDateString()}</span>
+                                <span>•</span>
+                                <span class="text-green-600 bg-green-50 px-1.5 py-0.5 rounded border border-green-100 flex items-center gap-1">
+                                    <i class="fa-solid fa-check-circle text-[10px]"></i> Verified
+                                </span>
+                            </div>
+                            
+                            <h3 class="text-lg font-bold text-slate-900 mb-1 leading-tight">${post.title}</h3>
+                            <div class="flex items-center gap-1 text-xs text-slate-500 mb-3">
+                                <i class="fa-solid fa-location-dot"></i> ${post.location}
+                            </div>
+
+                            <p class="text-slate-600 text-sm mb-3 leading-relaxed">${post.description}</p>
+
+                            ${post.imageUrl ? `
+                                <div class="w-full h-48 bg-slate-100 rounded-lg overflow-hidden mb-3">
+                                    <img src="${post.imageUrl}" class="w-full h-full object-cover hover:scale-105 transition-transform duration-500">
+                                </div>
+                            ` : ''}
+
+                            <div class="flex items-center gap-4 pt-2 border-t border-slate-50">
+                                <button class="flex items-center gap-2 text-xs font-medium text-slate-500 hover:text-gov-blue">
+                                    <i class="fa-regular fa-comment-alt"></i> 24 Comments
+                                </button>
+                                <button class="flex items-center gap-2 text-xs font-medium text-slate-500 hover:text-gov-blue">
+                                    <i class="fa-solid fa-share"></i> Share
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.handleUpvote = async (postId, authorId) => {
+            // 1. UI Optimistic Update
+            const voteEl = document.getElementById(`vote-${postId}`);
+            let currentVotes = parseInt(voteEl.innerText);
+            voteEl.innerText = currentVotes + 1;
+            voteEl.classList.add('text-gov-blue');
+
+            // 2. Logic & Backend Update
+            if (state.isMock) {
+                // Mock logic: update local state
+                const post = state.posts.find(p => p.id === postId);
+                if (post) post.votes++;
+                
+                // CAPACITATION LOOP: Increment Author Reputation
+                if (authorId === state.user?.uid) {
+                    state.user.reputation++;
+                    sessionStorage.setItem('mockUser', JSON.stringify(state.user));
+                    updateNavUserWidget(); // Update navbar score
+                }
+                alert(`Upvoted! Author ${authorId} gained +1 Reputation.`);
+            } else {
+                try {
+                    // Firestore Transaction
+                    // A. Increment Post Votes
+                    const postRef = doc(db, "reports", postId);
+                    await updateDoc(postRef, { votes: increment(1) });
+
+                    // B. Increment Author Reputation (Capacitation Logic)
+                    const authorRef = doc(db, "users", authorId);
+                    await updateDoc(authorRef, { reputation: increment(1) });
+
+                    // If current user is author, update local state too
+                    if (state.user.uid === authorId) {
+                        state.user.reputation++;
+                        updateNavUserWidget();
+                    }
+                } catch (e) {
+                    console.error("Upvote failed", e);
+                    // Revert UI if failed
+                    voteEl.innerText = currentVotes;
+                }
+            }
+        };
+
+        async function renderProfile() {
+            const user = state.user;
+            if (!user) return router.navigate('login');
+
+            document.getElementById('profileName').innerText = user.displayName;
+            document.getElementById('profileEmail').innerText = user.email;
+            document.getElementById('profileAvatar').src = user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName}`;
+            document.getElementById('profileReputation').innerText = user.reputation;
+
+            // Badges Logic
+            const badgesContainer = document.getElementById('profileBadges');
+            badgesContainer.innerHTML = '';
+            
+            const badges = [
+                { name: 'Citizen Observer', min: 0, class: 'bg-slate-100 text-slate-600' },
+                { name: 'Community Watchdog', min: 50, class: 'badge-watchdog' },
+                { name: 'Trusted Sentinel', min: 100, class: 'badge-sentinel' },
+                { name: 'Audit Master', min: 200, class: 'badge-guardian' }
+            ];
+
+            badges.forEach(badge => {
+                if (user.reputation >= badge.min) {
+                    badgesContainer.innerHTML += `
+                        <span class="px-3 py-1 rounded-full text-xs font-bold border border-transparent ${badge.class}">
+                            ${badge.name}
+                        </span>
+                    `;
+                }
+            });
+
+            // History (Mock for now)
+            const historyContainer = document.getElementById('profileHistory');
+            historyContainer.innerHTML = `
+                <div class="bg-slate-50 rounded-lg p-4 border border-slate-100 text-center text-slate-500 text-sm">
+                    No recent submissions available in this prototype view.
+                </div>
+            `;
+        }
+
+        // Expose router globally
+        window.router = router;
+
+    </script>
+</body>
+</html>
