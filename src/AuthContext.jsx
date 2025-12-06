@@ -28,7 +28,7 @@ export function AuthProvider({ children }) {
               email: user.email,
               displayName: user.displayName,
               photoURL: user.photoURL,
-              reputation: 10, // Default starting reputation
+              reputation: 0,
               createdAt: new Date().toISOString(),
               role: 'citizen'
             });

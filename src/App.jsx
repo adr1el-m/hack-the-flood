@@ -7,8 +7,9 @@ import { useReports } from './hooks';
 import ReportView from './components/ReportView';
 import ProjectSelector from './components/ProjectSelector';
 import UserReports from './components/UserReports';
+import ParallaxBackground from './components/ParallaxBackground';
 import { db } from './firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, onSnapshot } from 'firebase/firestore';
 
 export default function App() {
   const navigate = useNavigate();
@@ -21,13 +22,16 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState(0);
   const [syncStatus, setSyncStatus] = useState('');
+  const [topReports, setTopReports] = useState([]);
+  const [topLoading, setTopLoading] = useState(true);
+  const hasKeys = Boolean(import.meta.env.VITE_FIREBASE_API_KEY && import.meta.env.VITE_FIREBASE_PROJECT_ID);
 
   const navItems = [
-    { path: '/dashboard/visual', icon: <PieChart size={18} />, label: 'Visual' },
-    { path: '/dashboard/table', icon: <TableIcon size={18} />, label: 'Table' },
-    { path: '/dashboard/contractors', icon: <Users size={18} />, label: 'Contractors' },
-    { path: '/dashboard/map', icon: <MapIcon size={18} />, label: 'Map' },
-    { path: '/community', icon: <MessageSquare size={18} />, label: 'Community' },
+    { path: '/dashboard/visual', icon: <PieChart size={18} />, label: t('visual') },
+    { path: '/dashboard/table', icon: <TableIcon size={18} />, label: t('table') },
+    { path: '/dashboard/contractors', icon: <Users size={18} />, label: t('contractors_nav') },
+    { path: '/dashboard/map', icon: <MapIcon size={18} />, label: t('map_nav') },
+    { path: '/community', icon: <MessageSquare size={18} />, label: t('community_nav') },
   ];
 
   const handleSync = async () => {
@@ -142,8 +146,39 @@ export default function App() {
     }
   };
 
+  React.useEffect(() => {
+    if (!hasKeys) {
+      setTopLoading(false);
+      setTopReports([]);
+      return;
+    }
+    try {
+      const q = query(collection(db, 'reports'), where('status', '==', 'Verified'));
+      const unsub = onSnapshot(q, (snap) => {
+        const list = snap.docs.map(d => {
+          const data = d.data();
+          return {
+            id: d.id,
+            title: data.title || 'Community Report',
+            location: data.location || '',
+            votes: typeof data.votes === 'number' ? data.votes : 0,
+            imageUrl: data.imageUrl || null,
+            authorName: data.authorName || 'Anonymous'
+          };
+        });
+        const sorted = list.sort((a, b) => (b.votes || 0) - (a.votes || 0)).slice(0, 5);
+        setTopReports(sorted);
+        setTopLoading(false);
+      });
+      return () => unsub();
+    } catch {
+      setTopLoading(false);
+    }
+  }, [hasKeys]);
+
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-gov-bg">
+    <div className="h-screen flex flex-col overflow-hidden bg-gov-bg relative">
+      <ParallaxBackground />
       {/* Navbar */}
       <nav className="bg-white border-b border-slate-200 px-4 py-3 flex flex-col md:flex-row justify-between items-center z-20 shadow-sm gap-3">
         <div className="flex justify-between w-full md:w-auto">
@@ -190,11 +225,11 @@ export default function App() {
             onClick={toggleLanguage}
             className="text-xs font-bold text-slate-500 border border-slate-300 px-2 py-1 rounded hover:bg-slate-100 transition-colors"
           >
-            {language === 'en' ? <span className="text-gov-blue">EN</span> : 'EN'} | {language === 'tl' ? <span className="text-gov-blue">TL</span> : 'TL'}
+            {language === 'en' ? <span className="text-gov-blue">English</span> : 'English'} | {language === 'tl' ? <span className="text-gov-blue">Tagalog</span> : 'Tagalog'}
           </button>
           <div className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-700">
             <div className="w-2 h-2 rounded-full bg-green-500"></div>
-            Online
+            {t('online')}
           </div>
         </div>
 
@@ -212,10 +247,10 @@ export default function App() {
           ) : (
             <>
               <NavLink to="/login" className="text-sm font-medium text-slate-600 hover:text-gov-blue px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">
-                Login
+                {t('login')}
               </NavLink>
               <NavLink to="/signup" className="text-sm font-bold text-white bg-gov-blue px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors">
-                Sign Up
+                {t('sign_up')}
               </NavLink>
             </>
           )}
@@ -224,13 +259,43 @@ export default function App() {
 
       <main className="flex-1 overflow-y-auto relative">
         {view === 'home' && (
-          <div className="h-full flex items-center justify-center p-4">
+          <div className="h-full flex flex-col items-center justify-start p-6">
             <button 
               onClick={() => setView('select-project')}
               className="px-6 py-4 bg-gov-blue text-white rounded-xl shadow-lg text-lg font-bold hover:bg-blue-700 active:scale-95 transition"
             >
-              Submit a Report
+              {t('submit_report')}
             </button>
+            <div className="w-full max-w-2xl mt-8">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-bold text-slate-800">{t('top_reports')}</h3>
+                <NavLink to="/community" className="text-xs text-gov-blue hover:underline">{t('view_community')}</NavLink>
+              </div>
+              {topLoading ? (
+                <div className="flex items-center justify-center py-6 text-slate-500 text-sm">{t('loading')}</div>
+              ) : (
+                <div className="space-y-3">
+                  {topReports.length === 0 ? (
+                    <div className="text-slate-500 text-sm">{t('no_reports_yet')}</div>
+                  ) : (
+                    topReports.map(item => (
+                      <div key={item.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 flex items-center gap-3">
+                        {item.imageUrl ? (
+                          <img src={item.imageUrl} alt="" className="w-14 h-14 object-cover rounded-md" />
+                        ) : (
+                          <div className="w-14 h-14 rounded-md bg-slate-100"></div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-semibold text-slate-800 truncate">{item.title}</div>
+                          <div className="text-xs text-slate-500 truncate">{item.location}</div>
+                        </div>
+                        <div className="text-xs font-bold text-slate-700">{item.votes} ▲</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

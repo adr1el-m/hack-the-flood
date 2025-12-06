@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowUp, MessageSquare, Share2, AlertTriangle } from 'lucide-react';
-import { getFirestore, collection, query, where, orderBy, onSnapshot, doc, runTransaction, updateDoc, arrayUnion, getDoc, serverTimestamp } from 'firebase/firestore';
+import { getFirestore, collection, query, where, orderBy, onSnapshot, doc, runTransaction, updateDoc, arrayUnion, getDoc, getDocs, serverTimestamp, increment, limit } from 'firebase/firestore';
 import { firebaseApp } from '../firebase';
 import { useAuth } from '../AuthContext';
+import { useLanguage } from '../LanguageContext';
 
 export default function CommunityFeed() {
   const [items, setItems] = useState([]);
@@ -25,6 +26,7 @@ export default function CommunityFeed() {
 
   const hasKeys = Boolean(import.meta.env.VITE_FIREBASE_API_KEY && import.meta.env.VITE_FIREBASE_PROJECT_ID);
   const { currentUser } = useAuth();
+  const { t } = useLanguage();
 
   useEffect(() => {
     if (!hasKeys) {
@@ -38,9 +40,7 @@ export default function CommunityFeed() {
       const db = getFirestore(firebaseApp);
       setMode('firestore');
       
-      // Simplified query to avoid index issues initially
-      // We will sort client-side if needed to prevent WSOD from missing indexes
-      const q = query(collection(db, 'reports'), where('status', '==', 'Verified'));
+      const q = query(collection(db, 'reports'), where('status', '==', 'Verified'), limit(200));
       
       const unsub = onSnapshot(q, (snap) => {
         try {
@@ -111,7 +111,16 @@ export default function CommunityFeed() {
       const db = getFirestore(firebaseApp);
       const snap = await getDoc(doc(db, 'users', item.userId));
       if (snap.exists()) {
-        setProfile(snap.data());
+        const base = snap.data();
+        try {
+          const q = query(collection(db, 'reports'), where('userId', '==', item.userId));
+          const ss = await getDocs(q);
+          let total = 0;
+          ss.docs.forEach(d => { const v = d.data().votes; total += typeof v === 'number' ? v : 0; });
+          setProfile({ ...base, reputation: total * 10 });
+        } catch {
+          setProfile(base);
+        }
       } else {
         setProfile({ displayName: item.authorName, photoURL: item.authorPhoto, reputation: 0, role: 'citizen' });
       }
@@ -123,34 +132,33 @@ export default function CommunityFeed() {
   };
 
   const upvote = async (id) => {
-    // Check local storage for existing vote
     const votedKey = `voted_${id}`;
-    if (localStorage.getItem(votedKey)) {
-      return; // Already voted
-    }
+    if (localStorage.getItem(votedKey)) return;
 
     if (mode === 'demo') {
       const current = (demoVotes[id] || 0) + 1;
       const nextMap = { ...demoVotes, [id]: current };
       setDemoVotes(nextMap);
       localStorage.setItem(demoVotesKey, JSON.stringify(nextMap));
-      localStorage.setItem(votedKey, 'true'); // Mark locally as voted
+      localStorage.setItem(votedKey, 'true');
       setItems(prev => prev.map(it => it.id === id ? { ...it, votes: current } : it));
       return;
     }
+
+    if (!currentUser) return;
+
     try {
       const db = getFirestore(firebaseApp);
       await runTransaction(db, async (tx) => {
         const ref = doc(db, 'reports', id);
         const snap = await tx.get(ref);
         if (!snap.exists()) return;
-        
         const data = snap.data();
-        const next = (data.votes || 0) + 1;
-        tx.update(ref, { votes: next });
+        const voters = Array.isArray(data.votedBy) ? data.votedBy : [];
+        if (voters.includes(currentUser.uid)) return;
+        tx.update(ref, { votes: increment(1), votedBy: arrayUnion(currentUser.uid) });
       });
-      
-      localStorage.setItem(votedKey, 'true'); // Mark locally as voted on success
+      localStorage.setItem(votedKey, 'true');
     } catch (e) {
       console.error("Upvote failed", e);
     }
@@ -164,7 +172,11 @@ export default function CommunityFeed() {
       setCommentInputs(prev => ({ ...prev, [id]: '' }));
       return;
     }
-    if (!currentUser) return;
+    if (!currentUser) {
+      alert(t('please_login_comment') || 'Please login to comment.');
+      // Optional: Navigate to login or just alert
+      return;
+    }
     try {
       const db = getFirestore(firebaseApp);
       const ref = doc(db, 'reports', id);
@@ -184,7 +196,7 @@ export default function CommunityFeed() {
     }
   };
 
-  const cards = useMemo(() => items.map(item => (
+  const cards = items.map(item => (
     <div key={item.id} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
       <div className="grid grid-cols-[52px_1fr]">
         <div className="bg-slate-50 border-r border-slate-200 flex flex-col items-center justify-center py-4 gap-2">
@@ -203,22 +215,22 @@ export default function CommunityFeed() {
         <div className="p-4">
           <div className="flex items-center gap-2 mb-2">
             {item.project && (
-               <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700 font-bold truncate max-w-[150px]">
+              <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700 font-bold">
                  🏗️ {item.project.contractor || 'Project'}
-               </span>
+              </span>
             )}
           </div>
           
           <div className="text-xs text-slate-500 mb-2 flex flex-wrap items-center gap-1">
             {item.authorPhoto && <img src={item.authorPhoto} className="w-4 h-4 rounded-full object-cover cursor-pointer" alt="" onClick={() => openProfileFor(item)} />}
-            <span className="font-medium cursor-pointer" onClick={() => openProfileFor(item)}>{item.authorName || 'Anonymous'}</span>
+            <span className="font-medium cursor-pointer" onClick={() => openProfileFor(item)}>{item.authorName || t('anonymous')}</span>
             <span>•</span>
-            <span className="truncate max-w-[200px]">{item.location || 'Unknown Location'}</span>
+            <span className="truncate max-w-[200px]">{item.location || t('unknown_location')}</span>
             <span>•</span>
             <span>{timeAgo(item.createdAt)}</span>
           </div>
 
-          <h3 className="text-lg font-bold text-slate-900 mb-2 leading-tight">{item.title || 'Community Report'}</h3>
+          <h3 className="text-lg font-bold text-slate-900 mb-2 leading-tight">{item.title || t('community_report')}</h3>
           
           {item.sentiment && (
              <div className="bg-slate-50 p-3 rounded-lg mb-3 border-l-2 border-gov-blue">
@@ -247,11 +259,11 @@ export default function CommunityFeed() {
           <div className="flex items-center justify-between">
             <button onClick={() => setOpenComments(prev => ({ ...prev, [item.id]: !prev[item.id] }))} className="text-sm text-slate-600 hover:text-gov-blue font-medium flex items-center gap-1">
               <MessageSquare size={16} />
-              <span>Comments</span>
+              <span>{t('comments')}</span>
             </button>
             <button onClick={() => share(item.title)} className="text-sm text-slate-600 hover:text-gov-blue font-medium flex items-center gap-1">
               <Share2 size={16} />
-              <span>Share</span>
+              <span>{t('share')}</span>
             </button>
           </div>
           
@@ -266,21 +278,21 @@ export default function CommunityFeed() {
                   <div className="text-slate-700 text-sm">{c.text}</div>
                 </div>
               )) : (
-                <div className="text-xs text-slate-500">No comments yet.</div>
+                <div className="text-xs text-slate-500">{t('no_comments')}</div>
               )}
               <div className="flex items-center gap-2">
                 <input
                   value={commentInputs[item.id] || ''}
                   onChange={(e) => setCommentInputs(prev => ({ ...prev, [item.id]: e.target.value }))}
-                  placeholder="Write a comment"
+                  placeholder={t('write_comment')}
                   className="flex-1 p-2 border border-slate-300 rounded-lg text-sm"
                 />
                 <button
                   onClick={() => addComment(item.id)}
-                  disabled={(!currentUser && mode !== 'demo') || !(commentInputs[item.id] || '').trim()}
+                  disabled={!(commentInputs[item.id] || '').trim()}
                   className="px-3 py-2 bg-gov-blue text-white rounded-lg text-sm disabled:opacity-50"
                 >
-                  Post
+                  {t('post')}
                 </button>
               </div>
             </div>
@@ -288,29 +300,29 @@ export default function CommunityFeed() {
         </div>
       </div>
     </div>
-  )), [items, openComments, demoVotes]);
+  ));
 
   return (
-    <div className="min-h-screen bg-gov-bg">
+    <div className="min-h-screen">
       <div className="max-w-2xl mx-auto px-4 py-6">
         {loading && (
           <div className="flex items-center justify-center py-8">
             <div className="w-10 h-10 border-4 border-slate-200 border-t-gov-blue rounded-full animate-spin"></div>
-            <span className="ml-3 text-sm text-slate-600">Loading SubaybayPH...</span>
+            <span className="ml-3 text-sm text-slate-600">{t('loading_feed')}</span>
           </div>
         )}
 
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-center">
             <AlertTriangle className="mx-auto text-red-500 mb-2" size={24} />
-            <h3 className="font-bold text-red-800">Unable to load feed</h3>
+            <h3 className="font-bold text-red-800">{t('unable_load_feed')}</h3>
             <p className="text-sm text-red-600">{error}</p>
           </div>
         )}
 
         {!loading && !error && items.length === 0 && (
            <div className="text-center py-10 text-slate-500">
-             <p>No reports found yet. Be the first to report!</p>
+             <p>{t('no_reports_found')}</p>
            </div>
         )}
 
@@ -329,7 +341,7 @@ export default function CommunityFeed() {
               <p className="text-xs text-slate-500">Reputation: {profile.reputation}</p>
             )}
             <div className="mt-4">
-              <button onClick={() => setProfileOpen(false)} className="text-sm text-slate-600 hover:text-slate-900">Close</button>
+              <button onClick={() => setProfileOpen(false)} className="text-sm text-slate-600 hover:text-slate-900">{t('close')}</button>
             </div>
           </div>
         </div>
