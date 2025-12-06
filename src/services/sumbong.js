@@ -57,9 +57,16 @@ export async function fetchCsvProjects() {
       }
     }
 
-    // Use explicit public path for production assets instead of import.meta.url resolution
-    const url = '/flood-control-projects-contractors_2025-12-06.csv';
-    const resp = await fetch(url);
+    // Try production path first, fallback to dev path if needed
+    let url = '/flood-control-projects-contractors_2025-12-06.csv';
+    let resp = await fetch(url);
+    
+    if (!resp.ok) {
+      // Fallback for local development if public/ isn't served at root (rare in Vite but safe)
+      url = new URL('../data/flood-control-projects-contractors_2025-12-06.csv', import.meta.url).href;
+      resp = await fetch(url);
+    }
+    
     if (!resp.ok) throw new Error('failed to fetch csv');
     const text = await resp.text();
 

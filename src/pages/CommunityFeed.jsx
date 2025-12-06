@@ -95,11 +95,18 @@ export default function CommunityFeed() {
   };
 
   const upvote = async (id) => {
+    // Check local storage for existing vote
+    const votedKey = `voted_${id}`;
+    if (localStorage.getItem(votedKey)) {
+      return; // Already voted
+    }
+
     if (mode === 'demo') {
       const current = (demoVotes[id] || 0) + 1;
       const nextMap = { ...demoVotes, [id]: current };
       setDemoVotes(nextMap);
       localStorage.setItem(demoVotesKey, JSON.stringify(nextMap));
+      localStorage.setItem(votedKey, 'true'); // Mark locally as voted
       setItems(prev => prev.map(it => it.id === id ? { ...it, votes: current } : it));
       return;
     }
@@ -113,10 +120,9 @@ export default function CommunityFeed() {
         const data = snap.data();
         const next = (data.votes || 0) + 1;
         tx.update(ref, { votes: next });
-        
-        // Optional: If user is authenticated, we could update reputation here
-        // But for unauthenticated upvotes, we skip it to avoid permission errors
       });
+      
+      localStorage.setItem(votedKey, 'true'); // Mark locally as voted on success
     } catch (e) {
       console.error("Upvote failed", e);
     }
@@ -135,10 +141,17 @@ export default function CommunityFeed() {
     <div key={item.id} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
       <div className="grid grid-cols-[52px_1fr]">
         <div className="bg-slate-50 border-r border-slate-200 flex flex-col items-center justify-center py-4 gap-2">
-          <button onClick={() => upvote(item.id)} className="w-8 h-8 rounded bg-white border border-slate-200 text-slate-600 hover:text-gov-blue hover:border-gov-blue transition">
+          <button 
+            onClick={() => upvote(item.id)} 
+            className={`w-8 h-8 rounded bg-white border text-slate-600 hover:text-gov-blue hover:border-gov-blue transition ${
+              localStorage.getItem(`voted_${item.id}`) ? 'text-gov-blue border-gov-blue bg-blue-50' : 'border-slate-200'
+            }`}
+          >
             <ArrowUp size={16} />
           </button>
-          <div className="text-sm font-bold text-slate-700">{item.votes || 0}</div>
+          <div className={`text-sm font-bold ${localStorage.getItem(`voted_${item.id}`) ? 'text-gov-blue' : 'text-slate-700'}`}>
+            {item.votes || 0}
+          </div>
         </div>
         <div className="p-4">
           <div className="flex items-center gap-2 mb-2">
