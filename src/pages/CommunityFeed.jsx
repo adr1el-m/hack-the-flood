@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowUp, MessageSquare, Share2, AlertTriangle } from 'lucide-react';
-import { getFirestore, collection, query, where, orderBy, onSnapshot, doc, runTransaction } from 'firebase/firestore';
+import { getFirestore, collection, query, where, orderBy, onSnapshot, doc, runTransaction, updateDoc, arrayUnion, getDoc, serverTimestamp } from 'firebase/firestore';
 import { firebaseApp } from '../firebase';
+import { useAuth } from '../AuthContext';
 
 export default function CommunityFeed() {
   const [items, setItems] = useState([]);
@@ -9,6 +10,9 @@ export default function CommunityFeed() {
   const [error, setError] = useState(null);
   const [mode, setMode] = useState('demo');
   const [openComments, setOpenComments] = useState({});
+  const [commentInputs, setCommentInputs] = useState({});
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profile, setProfile] = useState(null);
 
   const demoVotesKey = 'subaybay_demo_votes_feed';
   const [demoVotes, setDemoVotes] = useState(() => {
@@ -20,6 +24,7 @@ export default function CommunityFeed() {
   });
 
   const hasKeys = Boolean(import.meta.env.VITE_FIREBASE_API_KEY && import.meta.env.VITE_FIREBASE_PROJECT_ID);
+  const { currentUser } = useAuth();
 
   useEffect(() => {
     if (!hasKeys) {
@@ -51,7 +56,9 @@ export default function CommunityFeed() {
               sentiment: data.sentiment || '',
               votes: typeof data.votes === 'number' ? data.votes : 0,
               createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
-              project: data.project || null
+              project: data.project || null,
+              userId: data.userId || null,
+              comments: Array.isArray(data.comments) ? data.comments : []
             };
           });
           
@@ -94,6 +101,27 @@ export default function CommunityFeed() {
     }
   };
 
+  const openProfileFor = async (item) => {
+    try {
+      if (!item.userId) {
+        setProfile({ displayName: item.authorName, photoURL: item.authorPhoto, reputation: 0, role: 'citizen' });
+        setProfileOpen(true);
+        return;
+      }
+      const db = getFirestore(firebaseApp);
+      const snap = await getDoc(doc(db, 'users', item.userId));
+      if (snap.exists()) {
+        setProfile(snap.data());
+      } else {
+        setProfile({ displayName: item.authorName, photoURL: item.authorPhoto, reputation: 0, role: 'citizen' });
+      }
+      setProfileOpen(true);
+    } catch {
+      setProfile({ displayName: item.authorName, photoURL: item.authorPhoto, reputation: 0, role: 'citizen' });
+      setProfileOpen(true);
+    }
+  };
+
   const upvote = async (id) => {
     // Check local storage for existing vote
     const votedKey = `voted_${id}`;
@@ -128,6 +156,25 @@ export default function CommunityFeed() {
     }
   };
 
+  const addComment = async (id) => {
+    const text = (commentInputs[id] || '').trim();
+    if (!text) return;
+    if (mode === 'demo') {
+      setItems(prev => prev.map(it => it.id === id ? { ...it, comments: [...(it.comments || []), { authorName: 'You', authorPhoto: null, text, createdAt: new Date() }] } : it));
+      setCommentInputs(prev => ({ ...prev, [id]: '' }));
+      return;
+    }
+    if (!currentUser) return;
+    try {
+      const db = getFirestore(firebaseApp);
+      const ref = doc(db, 'reports', id);
+      await updateDoc(ref, { comments: arrayUnion({ userId: currentUser.uid, authorName: currentUser.displayName || 'Anonymous', authorPhoto: currentUser.photoURL || null, text, createdAt: serverTimestamp() }) });
+      setCommentInputs(prev => ({ ...prev, [id]: '' }));
+    } catch (e) {
+      console.error('Add comment failed', e);
+    }
+  };
+
   const share = async (title) => {
     const url = window.location.href;
     if (navigator.share) {
@@ -155,7 +202,6 @@ export default function CommunityFeed() {
         </div>
         <div className="p-4">
           <div className="flex items-center gap-2 mb-2">
-            <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700 font-bold">✅ Verified by NGO</span>
             {item.project && (
                <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700 font-bold truncate max-w-[150px]">
                  🏗️ {item.project.contractor || 'Project'}
@@ -164,8 +210,8 @@ export default function CommunityFeed() {
           </div>
           
           <div className="text-xs text-slate-500 mb-2 flex flex-wrap items-center gap-1">
-            {item.authorPhoto && <img src={item.authorPhoto} className="w-4 h-4 rounded-full object-cover" alt="" />}
-            <span className="font-medium">{item.authorName || 'Anonymous'}</span>
+            {item.authorPhoto && <img src={item.authorPhoto} className="w-4 h-4 rounded-full object-cover cursor-pointer" alt="" onClick={() => openProfileFor(item)} />}
+            <span className="font-medium cursor-pointer" onClick={() => openProfileFor(item)}>{item.authorName || 'Anonymous'}</span>
             <span>•</span>
             <span className="truncate max-w-[200px]">{item.location || 'Unknown Location'}</span>
             <span>•</span>
@@ -211,13 +257,31 @@ export default function CommunityFeed() {
           
           {openComments[item.id] && (
             <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm">
-                <span className="font-bold text-slate-700 block text-xs mb-1">Resident</span>
-                I walk past here every day, nothing has changed!
-              </div>
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm">
-                <span className="font-bold text-slate-700 block text-xs mb-1">Volunteer</span>
-                We checked records, delays look suspicious.
+              {item.comments && item.comments.length > 0 ? item.comments.map((c, idx) => (
+                <div key={idx} className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm">
+                  <div className="flex items-center gap-2 mb-1">
+                    {c.authorPhoto && <img src={c.authorPhoto} className="w-4 h-4 rounded-full object-cover" alt="" />}
+                    <span className="font-bold text-slate-700 text-xs">{c.authorName || 'Citizen'}</span>
+                  </div>
+                  <div className="text-slate-700 text-sm">{c.text}</div>
+                </div>
+              )) : (
+                <div className="text-xs text-slate-500">No comments yet.</div>
+              )}
+              <div className="flex items-center gap-2">
+                <input
+                  value={commentInputs[item.id] || ''}
+                  onChange={(e) => setCommentInputs(prev => ({ ...prev, [item.id]: e.target.value }))}
+                  placeholder="Write a comment"
+                  className="flex-1 p-2 border border-slate-300 rounded-lg text-sm"
+                />
+                <button
+                  onClick={() => addComment(item.id)}
+                  disabled={(!currentUser && mode !== 'demo') || !(commentInputs[item.id] || '').trim()}
+                  className="px-3 py-2 bg-gov-blue text-white rounded-lg text-sm disabled:opacity-50"
+                >
+                  Post
+                </button>
               </div>
             </div>
           )}
@@ -256,6 +320,20 @@ export default function CommunityFeed() {
           </div>
         )}
       </div>
+      {profileOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm text-center">
+            <img src={profile?.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.displayName || 'Citizen')}`} className="w-16 h-16 rounded-full border border-slate-200 mx-auto mb-2 object-cover" alt="" />
+            <h3 className="text-lg font-bold text-slate-800">{profile?.displayName || 'Citizen'}</h3>
+            {typeof profile?.reputation === 'number' && (
+              <p className="text-xs text-slate-500">Reputation: {profile.reputation}</p>
+            )}
+            <div className="mt-4">
+              <button onClick={() => setProfileOpen(false)} className="text-sm text-slate-600 hover:text-slate-900">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
