@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Camera, Hand, RotateCcw, X, Save } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
 
-export default function ReportView({ onClose, onSave }) {
+export default function ReportView({ onClose, onSave, project }) {
   const { t } = useLanguage();
   const [image, setImage] = useState(null);
   const [sentiment, setSentiment] = useState('');
@@ -19,7 +19,7 @@ export default function ReportView({ onClose, onSave }) {
     reader.onload = (event) => {
       const img = new Image();
       img.onload = () => {
-        const maxWidth = 800;
+        const maxWidth = 600;
         let width = img.width;
         let height = img.height;
 
@@ -29,13 +29,6 @@ export default function ReportView({ onClose, onSave }) {
         }
 
         setImage(img);
-        
-        // Draw to canvas
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d');
-        canvas.width = width;
-        canvas.height = height;
-        ctx.drawImage(img, 0, 0, width, height);
       };
       img.src = event.target.result;
     };
@@ -111,9 +104,28 @@ export default function ReportView({ onClose, onSave }) {
     isDrawing.current = false;
   };
 
+  useEffect(() => {
+    if (!image || !canvasRef.current) return;
+    const maxWidth = 600;
+    let width = image.width;
+    let height = image.height;
+
+    if (width > maxWidth) {
+      height *= maxWidth / width;
+      width = maxWidth;
+    }
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    canvas.width = width;
+    canvas.height = height;
+    ctx.clearRect(0, 0, width, height);
+    ctx.drawImage(image, 0, 0, width, height);
+  }, [image]);
+
   const handleSave = () => {
     if (!canvasRef.current) return;
-    const imageData = canvasRef.current.toDataURL('image/jpeg', 0.7);
+    const imageData = canvasRef.current.toDataURL('image/jpeg', 0.6);
     const timestamp = new Date().toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     
     onSave({
@@ -132,7 +144,14 @@ export default function ReportView({ onClose, onSave }) {
         <button onClick={onClose} className="text-slate-500 hover:text-slate-800 text-sm font-medium px-2 py-1">
           {t('cancel')}
         </button>
-        <h2 className="font-semibold text-slate-800">{t('new_report')}</h2>
+        <div className="text-center">
+          <h2 className="font-semibold text-slate-800">{t('new_report')}</h2>
+          {project && (
+            <p className="text-[10px] text-slate-500 max-w-[150px] truncate mx-auto">
+              {project.desc}
+            </p>
+          )}
+        </div>
         {image && (
           <button onClick={handleSave} className="text-gov-blue font-bold text-sm px-2 py-1">
             {t('save')}
@@ -142,6 +161,19 @@ export default function ReportView({ onClose, onSave }) {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto bg-slate-50 p-4">
+        
+        {/* Project Context Card */}
+        {project && (
+          <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 mb-4 text-xs">
+             <h4 className="font-bold text-blue-900 mb-1">Reporting Project:</h4>
+             <p className="text-blue-800 font-medium mb-1">{project.desc}</p>
+             <div className="flex gap-2 text-blue-600">
+               <span>📍 {project.location}</span>
+               <span>🏗️ {project.contractor}</span>
+             </div>
+          </div>
+        )}
+
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-4 relative flex flex-col items-center justify-center min-h-[300px]">
           
           {!image ? (
@@ -163,7 +195,7 @@ export default function ReportView({ onClose, onSave }) {
             <>
               <canvas 
                 ref={canvasRef}
-                className="w-full object-contain bg-black touch-none"
+                className="w-full object-contain touch-none"
                 onMouseDown={handleStart}
                 onMouseMove={handleMove}
                 onMouseUp={handleEnd}

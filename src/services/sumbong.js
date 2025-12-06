@@ -140,6 +140,9 @@ export async function fetchCsvProjects() {
         date: toDateStr(row),
         typeOfWork: get(row, 'TypeofWork'),
         infraYear: get(row, 'InfraYear'),
+        province: get(row, 'Province'),
+        deo: get(row, 'DistrictEngineeringOffice') || get(row, 'ImplementingOffice'),
+        legislativeDistrict: get(row, 'LegislativeDistrict'),
         latitude: get(row, 'Latitude'),
         longitude: get(row, 'Longitude'),
       };

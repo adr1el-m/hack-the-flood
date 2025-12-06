@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { LanguageProvider } from './LanguageContext';
+import { AuthProvider } from './AuthContext';
 import DashboardLayout from './components/DashboardLayout';
 import VisualsPage from './pages/VisualsPage';
 import TablePage from './pages/TablePage';
@@ -9,19 +10,22 @@ import MapPage from './pages/MapPage';
 import CommunityFeed from './pages/CommunityFeed';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
+import ProfilePage from './pages/ProfilePage';
 import App from './App';
 
 export default function Router() {
   return (
-    <LanguageProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Home & Report Flow */}
-          <Route path="/" element={<App />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
-          
-          {/* Dashboard Routes */}
+    <AuthProvider>
+      <LanguageProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* Home & Report Flow */}
+            <Route path="/" element={<App />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            
+            {/* Dashboard Routes */}
           <Route path="/dashboard" element={<DashboardLayout><VisualsPage /></DashboardLayout>} />
           <Route path="/dashboard/visual" element={<DashboardLayout><VisualsPage /></DashboardLayout>} />
           <Route path="/dashboard/table" element={<DashboardLayout><TablePage /></DashboardLayout>} />
@@ -33,6 +37,7 @@ export default function Router() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
-    </LanguageProvider>
+      </LanguageProvider>
+    </AuthProvider>
   );
 }

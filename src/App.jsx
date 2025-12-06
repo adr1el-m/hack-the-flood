@@ -2,15 +2,21 @@ import React, { useState } from 'react';
 import { useNavigate, NavLink } from 'react-router-dom';
 import { Landmark, UploadCloud, Shield, Plus, Trash2, FolderOpen, PieChart, Table as TableIcon, Users, Map as MapIcon, MessageSquare } from 'lucide-react';
 import { useLanguage } from './LanguageContext';
+import { useAuth } from './AuthContext';
 import { useReports } from './hooks';
 import ReportView from './components/ReportView';
+import ProjectSelector from './components/ProjectSelector';
+import { db } from './firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function App() {
   const navigate = useNavigate();
   const { t, toggleLanguage, language } = useLanguage();
+  const { currentUser } = useAuth();
   const { reports, addReport, deleteReport, clearReports } = useReports();
   
-  const [view, setView] = useState('home'); // home, report
+  const [view, setView] = useState('home'); // home, select-project, report
+  const [selectedProject, setSelectedProject] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState(0);
   const [syncStatus, setSyncStatus] = useState('');
@@ -23,36 +29,65 @@ export default function App() {
     { path: '/community', icon: <MessageSquare size={18} />, label: 'Community' },
   ];
 
-  const handleSync = () => {
+  const handleSync = async () => {
     setIsSyncing(true);
-    
-    setTimeout(() => {
-      setSyncStatus('status_encrypting');
-      setSyncProgress(30);
-    }, 500);
+    setSyncStatus('status_encrypting');
+    setSyncProgress(30);
 
-    setTimeout(() => {
-      setSyncStatus('status_uploading');
-      setSyncProgress(70);
-    }, 1500);
+    try {
+      if (!currentUser) {
+        setSyncStatus('Error: Please log in to upload');
+        setTimeout(() => {
+          setIsSyncing(false);
+          setSyncProgress(0);
+        }, 2000);
+        return;
+      }
 
-    setTimeout(() => {
+      if (reports.length > 0) {
+        setSyncStatus('status_uploading');
+        setSyncProgress(70);
+
+        const promises = reports.map(report => {
+          const projectData = report.project || {};
+          return addDoc(collection(db, 'reports'), {
+            ...report,
+            userId: currentUser.uid,
+            authorName: currentUser.displayName || 'Anonymous Citizen',
+            authorPhoto: currentUser.photoURL || null,
+            imageUrl: report.image,
+            title: projectData.desc || 'Community Report',
+            location: projectData.location || 'Unknown Location',
+            project: projectData, // Explicitly save project data
+            status: 'Verified',
+            votes: 0,
+            createdAt: serverTimestamp()
+          });
+        });
+
+        await Promise.all(promises);
+      }
+
       setSyncStatus('status_verifying');
       setSyncProgress(90);
-    }, 2500);
-
-    setTimeout(() => {
-      setSyncProgress(100);
-      setSyncStatus('status_success');
-      
-      clearReports();
       
       setTimeout(() => {
-        setIsSyncing(false);
-        setSyncProgress(0);
-        setSyncStatus('');
-      }, 1500);
-    }, 3500);
+        setSyncProgress(100);
+        setSyncStatus('status_success');
+        
+        clearReports();
+        
+        setTimeout(() => {
+          setIsSyncing(false);
+          setSyncProgress(0);
+          setSyncStatus('');
+        }, 1500);
+      }, 1000);
+
+    } catch (error) {
+      console.error("Sync failed", error);
+      setSyncStatus(`Error: ${error.message}`);
+    }
   };
 
   return (
@@ -113,12 +148,25 @@ export default function App() {
 
         {/* Auth Buttons */}
         <div className="flex items-center gap-2 ml-2">
-          <NavLink to="/login" className="text-sm font-medium text-slate-600 hover:text-gov-blue px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">
-            Login
-          </NavLink>
-          <NavLink to="/signup" className="text-sm font-bold text-white bg-gov-blue px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors">
-            Sign Up
-          </NavLink>
+          {currentUser ? (
+            <NavLink to="/profile" className="flex items-center gap-2 text-sm font-medium text-slate-700 hover:bg-slate-50 px-2 py-1 rounded-lg transition-colors">
+              <img 
+                src={currentUser.photoURL || `https://ui-avatars.com/api/?name=${currentUser.displayName || 'User'}`} 
+                className="w-8 h-8 rounded-full border border-slate-200"
+                alt="Profile"
+              />
+              <span className="hidden sm:block">{currentUser.displayName?.split(' ')[0] || 'User'}</span>
+            </NavLink>
+          ) : (
+            <>
+              <NavLink to="/login" className="text-sm font-medium text-slate-600 hover:text-gov-blue px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">
+                Login
+              </NavLink>
+              <NavLink to="/signup" className="text-sm font-bold text-white bg-gov-blue px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors">
+                Sign Up
+              </NavLink>
+            </>
+          )}
         </div>
       </nav>
 
@@ -212,7 +260,7 @@ export default function App() {
             {/* FAB */}
             <div className="fixed bottom-6 right-6 z-10">
               <button 
-                onClick={() => setView('report')}
+                onClick={() => setView('select-project')}
                 className="w-14 h-14 bg-gov-blue rounded-full text-white flex items-center justify-center shadow-lg hover:bg-blue-800 transition-colors active:scale-95"
               >
                 <Plus size={24} />
@@ -221,12 +269,27 @@ export default function App() {
           </div>
         )}
 
+        {view === 'select-project' && (
+          <ProjectSelector 
+            onSelect={(project) => {
+              setSelectedProject(project);
+              setView('report');
+            }}
+            onCancel={() => setView('home')}
+          />
+        )}
+
         {view === 'report' && (
           <ReportView 
-            onClose={() => setView('home')} 
+            project={selectedProject}
+            onClose={() => {
+               setView('home');
+               setSelectedProject(null);
+            }} 
             onSave={(report) => {
-              addReport(report);
+              addReport({ ...report, project: selectedProject });
               setView('home');
+              setSelectedProject(null);
             }}
           />
         )}
@@ -249,6 +312,15 @@ export default function App() {
                   style={{ width: `${syncProgress}%` }}
                 ></div>
               </div>
+
+              {syncStatus.startsWith('Error') && (
+                <button 
+                  onClick={() => setIsSyncing(false)}
+                  className="mt-4 text-sm text-slate-500 hover:text-slate-800 underline"
+                >
+                  Close
+                </button>
+              )}
             </div>
           </div>
         )}
