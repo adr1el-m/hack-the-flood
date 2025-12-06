@@ -257,7 +257,7 @@ export default function App() {
         </div>
       </nav>
 
-      <main className="flex-1 overflow-y-auto relative">
+      <main className="flex-1 overflow-y-auto relative z-10">
         {view === 'home' && (
           <div className="h-full flex flex-col items-center justify-start p-6">
             <button 

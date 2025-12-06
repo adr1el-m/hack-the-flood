@@ -12,7 +12,8 @@ export default function CommunityFeed() {
   const [mode, setMode] = useState('demo');
   const [openComments, setOpenComments] = useState({});
   const [commentInputs, setCommentInputs] = useState({});
-  const [profileOpen, setProfileOpen] = useState(false);
+  const [postingId, setPostingId] = useState(null);
+    const [profileOpen, setProfileOpen] = useState(false);
   const [profile, setProfile] = useState(null);
 
   const demoVotesKey = 'subaybay_demo_votes_feed';
@@ -174,16 +175,19 @@ export default function CommunityFeed() {
     }
     if (!currentUser) {
       alert(t('please_login_comment') || 'Please login to comment.');
-      // Optional: Navigate to login or just alert
       return;
     }
+    setPostingId(id);
     try {
       const db = getFirestore(firebaseApp);
       const ref = doc(db, 'reports', id);
-      await updateDoc(ref, { comments: arrayUnion({ userId: currentUser.uid, authorName: currentUser.displayName || 'Anonymous', authorPhoto: currentUser.photoURL || null, text, createdAt: serverTimestamp() }) });
+      await updateDoc(ref, { comments: arrayUnion({ userId: currentUser.uid, authorName: currentUser.displayName || 'Anonymous', authorPhoto: currentUser.photoURL || null, text, createdAt: new Date() }) });
       setCommentInputs(prev => ({ ...prev, [id]: '' }));
     } catch (e) {
       console.error('Add comment failed', e);
+      alert('Failed to post comment: ' + e.message);
+    } finally {
+      setPostingId(null);
     }
   };
 
@@ -289,10 +293,10 @@ export default function CommunityFeed() {
                 />
                 <button
                   onClick={() => addComment(item.id)}
-                  disabled={!(commentInputs[item.id] || '').trim()}
+                  disabled={!(commentInputs[item.id] || '').trim() || postingId === item.id}
                   className="px-3 py-2 bg-gov-blue text-white rounded-lg text-sm disabled:opacity-50"
                 >
-                  {t('post')}
+                  {postingId === item.id ? '...' : t('post')}
                 </button>
               </div>
             </div>
