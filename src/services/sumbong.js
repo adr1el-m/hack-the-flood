@@ -57,7 +57,8 @@ export async function fetchCsvProjects() {
       }
     }
 
-    const url = new URL('../data/flood-control-projects-contractors_2025-12-06.csv', import.meta.url).href;
+    // Use explicit public path for production assets instead of import.meta.url resolution
+    const url = '/flood-control-projects-contractors_2025-12-06.csv';
     const resp = await fetch(url);
     if (!resp.ok) throw new Error('failed to fetch csv');
     const text = await resp.text();

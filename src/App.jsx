@@ -6,6 +6,7 @@ import { useAuth } from './AuthContext';
 import { useReports } from './hooks';
 import ReportView from './components/ReportView';
 import ProjectSelector from './components/ProjectSelector';
+import UserReports from './components/UserReports';
 import { db } from './firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
@@ -266,6 +267,14 @@ export default function App() {
                 <Plus size={24} />
               </button>
             </div>
+
+            {/* My Submitted Reports Section (Bottom of Home) */}
+            {currentUser && (
+              <div className="mb-24 border-t border-slate-200 pt-6">
+                <h3 className="font-bold text-slate-800 mb-4 px-1">My Submitted Reports</h3>
+                <UserReports />
+              </div>
+            )}
           </div>
         )}
 

@@ -114,14 +114,8 @@ export default function CommunityFeed() {
         const next = (data.votes || 0) + 1;
         tx.update(ref, { votes: next });
         
-        if (data.userId) {
-          const userRef = doc(db, 'users', data.userId);
-          const userSnap = await tx.get(userRef);
-          if (userSnap.exists()) {
-            const currentRep = userSnap.data().reputation || 0;
-            tx.update(userRef, { reputation: currentRep + 1 });
-          }
-        }
+        // Optional: If user is authenticated, we could update reputation here
+        // But for unauthenticated upvotes, we skip it to avoid permission errors
       });
     } catch (e) {
       console.error("Upvote failed", e);

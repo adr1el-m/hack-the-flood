@@ -4,6 +4,7 @@ import { useAuth } from '../AuthContext';
 import { ArrowLeft, User, LogOut, Shield } from 'lucide-react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
+import UserReports from '../components/UserReports';
 
 export default function ProfilePage() {
   const { currentUser, logout } = useAuth();
@@ -76,6 +77,12 @@ export default function ProfilePage() {
               <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1">Reputation Score</div>
               <div className="text-5xl font-extrabold text-gov-blue mb-2">{reputation}</div>
               <p className="text-sm text-slate-600">Credibility Points</p>
+            </div>
+
+            {/* My Reports Section */}
+            <div className="mb-6">
+              <h3 className="font-bold text-slate-800 mb-3">My Report History</h3>
+              <UserReports />
             </div>
 
             <div className="flex flex-col gap-3">
