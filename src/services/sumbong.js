@@ -48,15 +48,6 @@ export async function fetchSumbongProjects() {
 
 export async function fetchCsvProjects() {
   try {
-    const cacheKey = 'csv_projects_cache_v1';
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      if (Date.now() - parsed.ts < 6 * 60 * 60 * 1000) {
-        return parsed.projects;
-      }
-    }
-
     // Try production path first, fallback to dev path if needed
     let url = '/flood-control-projects-contractors_2025-12-06.csv';
     let resp = await fetch(url);
@@ -156,9 +147,9 @@ export async function fetchCsvProjects() {
       };
     }).filter(p => p.desc);
 
-    localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), projects }));
     return projects;
   } catch (e) {
+    console.error('Error loading projects:', e);
     return [];
   }
 }
