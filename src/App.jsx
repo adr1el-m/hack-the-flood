@@ -188,7 +188,6 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-sm font-bold text-gov-blue leading-tight">SubaybayPH</h1>
-              <p className="text-[10px] text-slate-500 uppercase tracking-wider">BetterGov PH</p>
             </div>
           </div>
           
